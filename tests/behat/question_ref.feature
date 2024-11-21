@@ -1,8 +1,8 @@
 @block @block_quizchat
 Feature: Question reference
   As an instructor/editingteacher,
-  I want students to be able to reference specific questions in their messages,
-  So that I can easily preview the referenced question and respond efficiently.
+  I want students to be able to reference specific questions in their messages and see clickable links to questions when referenced by a teacher,
+  So that I can preview the referenced question efficiently, and students can directly navigate to the specific question when I refer a question in my messages.
 
   Background:
     Given the following "courses" exist:
@@ -209,3 +209,32 @@ Feature: Question reference
     And I click on "TF3" "link"
     And I switch to a second window
     Then I should see "Third question"
+  @javascript
+  Scenario: Recieving messages in students view with refernced question
+  When the following "questions" exist:
+    | questioncategory | qtype       | name                      | questiontext    |
+    | Test questions   | truefalse   | TF1                       | First question  |
+    | Test questions   | truefalse   | TF2                       | Second question |
+    | Test questions   | truefalse   | TF3                       | Third question  |
+    | Test questions   | truefalse   | TF4                       | Fourth question |
+    | Test questions   | truefalse   | TF5                       | Fifth question  |
+    | Test questions   | random      | Random (Test questions)   | 0               |
+  And quiz "Quiz 1" contains the following questions:
+    | question                | page | requireprevious |
+    | Random (Test questions) | 1    | 0               |
+    | TF1                     | 2    | 1               |
+  And user "student1" has started an attempt at quiz "Quiz 1" randomised as follows:
+    | slot | actualquestion | response |
+    |   1  | TF5            | False    |
+    |   2  | TF1            | False    |
+  And I am on the "Quiz 1" "mod_quiz > View" page logged in as "student1"
+  And A Quizchat message "Additional info for q2." is sent from "teacher1" to "group" about question "TF1" at quiz "Quiz 1"
+  And I reload the page
+  And I wait until the page is ready
+  And I press "Continue your attempt"
+  And I should see "Additional info for q2." in the ".block_quizchat_msg_area_body" "css_element"
+  And I should see "Fifth question"
+  And "2" "link" should exist in the ".block_quizchat_msg_area_body" "css_element"
+  And I click on "2" "link" in the ".block_quizchat_msg_area_body" "css_element"
+  And I wait until the page is ready
+  Then I should see "First question"

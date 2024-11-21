@@ -100,3 +100,6 @@ $string['help_deactivated_students_msgs_help'] = 'Studierende haben derzeit nich
 $string['role_permissions_page'] = 'Rollen-Rechte Seite';
 $string['fullscreen'] = 'Quizchat in einer neuen Seite öffnen';
 $string['attempt_deleted_notification'] = "Alle Quizchat-Nachrichten im Zusammenhang mit den gelöschten Quiz-Versuchen wurden erfolgreich gelöscht.";
+$string['eventmessageadded'] = 'Eine neue Quizchat-Nachricht wurde gesendet.';
+$string['sidemenu_you'] = 'Ich';
+

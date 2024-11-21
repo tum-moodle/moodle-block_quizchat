@@ -100,3 +100,6 @@ $string['help_deactivated_students_msgs_help'] = 'Students currently do not have
 $string['role_permissions_page'] = 'role permissions page';
 $string['fullscreen'] = 'Open Quizchat in a new page';
 $string['attempt_deleted_notification'] = 'All Quizchat-messages related to the deleted quiz attempt(s) have been successfully deleted.';
+$string['eventmessageadded'] = 'A new Quizchat message is sent.';
+$string['sidemenu_you'] = 'You';
+

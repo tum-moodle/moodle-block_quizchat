@@ -15,14 +15,33 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details for the block_quizchat plugin.
+ * PHP library for the block_quizchat plugin.
  *
  * @package   block_quizchat
  * @copyright 2023, TUM ProLehre | Medien und Didaktik <moodle@tum.de>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace block_quizchat\event;
+
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024112003;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2020060900;        // Requires this Moodle version
-$plugin->component = 'block_quizchat';      // Full name of the plugin (used for diagnostics)
+class message_sent extends \core\event\base {
+
+    protected function init() {
+        $this->data['crud'] = 'c'; // Create
+        $this->data['edulevel'] = self::LEVEL_PARTICIPATING;
+        $this->data['objecttable'] = 'block_quizchat_messages';
+    }
+
+    public static function get_name() {
+        return get_string('eventmessageadded', 'block_quizchat');
+    }
+
+    public function get_description() {
+        return get_string('eventmessageadded', 'block_quizchat');
+    }
+
+    public function get_url() {
+        return new \moodle_url('/blocks/block_quizchat/view.php', ['blockid' => $this->blockinstanceid, 'cmid' =>$this->cmid]);
+    }
+}

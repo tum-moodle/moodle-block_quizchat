@@ -30,7 +30,8 @@ import {
 } from 'block_quizchat/chars_limit';
 import {
     quizchat_general_question_id,
-    lang_strings
+    lang_strings,
+    write_sessionStorage
 } from 'block_quizchat/master';
 let quizchatobj;
 var msglen;
@@ -168,7 +169,7 @@ const setFormIfExist = () => {
     } else {
         // The element is not yet rendered
         // Schedule another check after a delay
-        timeoutid = setTimeout(setFormIfExist, 1000); // Check again after 1 second (adjust delay as needed)
+        timeoutid = setTimeout(setFormIfExist, 1000); // Check again after 1 second
     }
 };
 
@@ -211,6 +212,7 @@ export const init_student = (arg_quizchat, confingsetting_msglen, reqmsg, receiv
         $(textinputcontrolname).on('blur', text_onblur);
         $(textinputcontrolname).on('invalid', text_setvalidmsg);
         setFormIfExist();
+        write_sessionStorage('selected_user_or_question_id', "-2");
         let targetnode = $('#block_quizchat_questions_form');
         let ul_config = {childList: true, subtree: true};
         let ul_observer = new MutationObserver(ul_callback);

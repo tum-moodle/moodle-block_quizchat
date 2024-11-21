@@ -45,16 +45,16 @@ class get_messages extends \external_api {
             'langstr_general' => new \external_value(PARAM_RAW, 'language string general'),
             'langstr_group' => new \external_value(PARAM_RAW, 'language string group'),
             'langstr_attempt' => new \external_value(PARAM_RAW, 'language string attempt'),
-            'langstr_all' => new \external_value(PARAM_RAW, 'language string all')
+            'langstr_all' => new \external_value(PARAM_RAW, 'language string all'),
+            'langstr_strftimerecentfull' => new \external_value(PARAM_RAW, 'language string strftimerecentfull')
         ]);
     }
     public static function execute_returns() {
         return new \external_single_structure([
             'stats' => new \external_single_structure([
                 'msg_total' => new \external_value(PARAM_INT, 'Total number of returned messages'),
-                'to_me' => new \external_value(PARAM_INT, 'Number of returned messages addressed to user'),
-                'to_all' => new \external_value(PARAM_INT, 'Number of returned messages addressed to all users'),
-                'to_teachers' => new \external_value(PARAM_INT, 'Number of returned messages addressed to teachers'),
+                'private' => new \external_value(PARAM_INT, 'Number of private messages'),
+                'group' => new \external_value(PARAM_INT, 'Number of group messages')
             ]),
             'messages' => new \external_multiple_structure(
                 new external_single_structure([
@@ -63,6 +63,7 @@ class get_messages extends \external_api {
                     'receiverid' => new \external_value(PARAM_INT, 'User (Receiver) id.'),
                     'groupid' => new \external_value(PARAM_INT, 'Group (Receiver) id.'),
                     'timestamp' => new \external_value(PARAM_INT, 'Timestamp of messages creation.'),
+                    'date_part' => new \external_value(PARAM_TEXT, 'Message date'),
                     'message' => new \external_value(PARAM_TEXT, 'Message text body.'),
                     'fullname' => new \external_value(PARAM_TEXT, 'Message sender fullname'),
                     'state' => new \external_value(PARAM_TEXT, 'Sender state in a quiz'),
@@ -76,11 +77,30 @@ class get_messages extends \external_api {
                     'quizattempt' => new \external_value(PARAM_RAW, 'Quiz Attempt'),
                     'questionid' => new \external_value(PARAM_INT, 'Question id')
                 ]), 'One message data set', VALUE_OPTIONAL
+            ),
+            'p_users' => new \external_multiple_structure(
+                new external_single_structure([
+                    'userid' => new \external_value(PARAM_INT, 'User id.'),
+                    'firstname' => new \external_value(PARAM_TEXT, 'firstname'),
+                    'lastname' => new \external_value(PARAM_TEXT, 'lastname'),
+                    'fullname' => new \external_value(PARAM_TEXT, 'fullname'),
+                    'picture' => new \external_value(PARAM_TEXT, 'picture'),
+                    'state' => new \external_value(PARAM_TEXT, 'user state in a quiz'),
+                    'message_ids' => new \external_value(PARAM_TEXT, 'Message ids')
+                ]), 'One message data set', VALUE_OPTIONAL
+            ),
+            'groups' => new \external_multiple_structure(
+                new external_single_structure([
+                    'question_id' => new \external_value(PARAM_INT, 'question id.'),
+                    'group_name' => new \external_value(PARAM_TEXT, 'group'),
+                    'picture' => new \external_value(PARAM_TEXT, 'picture'),
+                    'message_ids' => new \external_value(PARAM_TEXT, 'Message ids')
+                ]), 'One message data set', VALUE_OPTIONAL
             )
         ]);
     }
-    public static function execute($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all) {
-        return get_msgs($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all);
+    public static function execute($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull) {
+        return get_msgs($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull);
     }
 
 }

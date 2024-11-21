@@ -27,19 +27,29 @@ import {queue_typeset as cardbodyMathJax} from 'block_quizchat/load-mathjax';
 import * as Instructor from 'block_quizchat/instructor';
 import {
     autofill_users_select,
-    update_user_select_status_indicators
+    update_user_select_status_indicators,
+    btn_msg_me_click,
+    btn_msg_grp_click
 } from 'block_quizchat/instructor';
-import {get_string as getString} from 'core/str';
-import UserDate from 'core/user_date';
 
-var poll_timeout = 10000;
+export var poll_timeout = 10000;
 var poll_timeout_id;
+export var poll_timeout_id_fullscreen;
 var unnotify_timeout;
 var unnotify_timeout_id;
-var quizchatid = 0;
-var quizchat_userid = 0;
+export var quizchatid = 0;
+export var quizchat_userid = 0;
 let processedDates = {};
 export var quizchat_msg = {
+    "messages": []
+};
+export var quizchat_msg_prev = {
+    "messages": []
+};
+export var quizchat_msg_usr_or_qs = {
+    "messages": []
+};
+export var quizchat_msg_counters = {
     "messages": []
 };
 export var quizchat_users = [];
@@ -104,6 +114,7 @@ export const quizchat_address_instructors = -1;
 export const quizchat_address_question_group = -2;
 export const quizchat_student_question_id = -1;
 export const quizchat_general_question_id = 0;
+export const allmsgs_id = -1;
 
 export var no_drawer = false;
 export var full_screen_flag;
@@ -114,10 +125,25 @@ export const reset_poll_timeout = () => {
     poll_messages(quizchatid);
 };
 
+export const reset_poll_timeout_fullscreen = () => {
+    clearTimeout(poll_timeout_id_fullscreen);
+    poll_messages(quizchatid);
+};
+
+export const reset_timeoutid_fullscreen = () => {
+    poll_timeout_id_fullscreen = setTimeout(poll_messages, poll_timeout, quizchatid);
+};
+
 export const int_sessionStorage = (key) => {
     let val = sessionStorage.getItem('moodle_qc_' + quizchat_userid + '_' + quizchatid + '_' + key);
     if(null === val) {
         return 0;
+    } else if (val == "true") {
+        return true;
+    }else if (val == "false") {
+        return false;
+    }else if (val == "-1") {
+        return -1;
     } else {
         return parseInt(val);
     }
@@ -128,35 +154,106 @@ export const write_sessionStorage = (key, val) => {
 };
 
 export const poll_messages = (quizchatid) => {
-    most_recent_msg_id = int_sessionStorage('latest_msg_id');
-    getmsgs_mostrecentmsg_id = 0;
     const followUp = (data) => {
-        if(-1 !== data.stats.msg_total)
+        let user_or_qs_id = int_sessionStorage('selected_user_or_question_id');
+        let group_session = int_sessionStorage('grp_flag');
+        most_recent_msg_id = (!full_screen_flag || user_or_qs_id == -1 ? int_sessionStorage('latest_msg_id')
+        : int_sessionStorage('latest_msg_id_usr_qs'));
+        getmsgs_mostrecentmsg_id = 0;
+        let user_or_question, usr_or_ques_msgs, usr_or_ques_msgs_str;
+        if(full_screen_flag && user_or_qs_id >= 0) {
+            user_or_question = (group_session ? data.groups.find(
+                el => el.question_id === user_or_qs_id
+            )
+            : data.p_users.find(el => el.userid === user_or_qs_id));
+            if(typeof user_or_question != 'undefined') {
+                usr_or_ques_msgs_str = user_or_question.message_ids.replace(/\s/g, '');
+                usr_or_ques_msgs_str = usr_or_ques_msgs_str.split(',');
+                usr_or_ques_msgs = usr_or_ques_msgs_str.map(id => parseInt(id));
+            }
+            else {
+                usr_or_ques_msgs = [];
+            }
+        }
+        let filteredMessages, msgs_length;
+        if(full_screen_flag && user_or_qs_id >= 0) {
+            if(usr_or_ques_msgs.length > 0) {
+                // Filter the messages where the id is present in usr_or_ques_msgs
+                filteredMessages = data.messages.filter(msg => usr_or_ques_msgs.includes(msg.id));
+            } else {
+                filteredMessages = [];
+            }
+        }
+        else {
+            filteredMessages = data.messages;
+        }
+        msgs_length = filteredMessages.length;
+        if(msgs_length > 0)
         {
             let total_unread_msg = int_sessionStorage('total_unread_msg');
-            let diff = data.messages.filter(msg => most_recent_msg_id < msg.id).length;
-            total_unread_msg += data.messages.filter(
+            let diff = filteredMessages.filter(msg => most_recent_msg_id < msg.id).length;
+            total_unread_msg += filteredMessages.filter(
                 msg => (most_recent_msg_id < msg.id) && (msg.userid !== quizchat_userid)).length;
-            write_sessionStorage('total_unread_msg', total_unread_msg);
-
             // Only update notification when a new msg arrives,
             // even if unread messages remain.
-            if(most_recent_msg_id < data.messages[data.messages.length -1].id || page_reloaded){
-                // Asign fresh data to global quizchat_msg
+            if(most_recent_msg_id < filteredMessages[msgs_length -1].id || page_reloaded) {
+                if(!full_screen_flag || user_or_qs_id == -1) {
+                    write_sessionStorage('total_unread_msg', total_unread_msg);
+                } else {
+                    write_sessionStorage('total_unread_msg_usr_qs', 0);
+                }
+                // Assign fresh data to global quizchat_msg
+                quizchat_msg_prev = quizchat_msg;
                 quizchat_msg = data;
+                quizchat_msg_counters = compare_actual_and_prev_data(quizchat_msg_prev, quizchat_msg);
+                if(full_screen_flag && user_or_qs_id >= 0) {quizchat_msg_usr_or_qs = filteredMessages;}
                 if(page_reloaded){
                     page_reloaded = false;
-                    update_msg_area(data.messages.length);
-                    //msg_loaded = true;
+                    update_msg_area(msgs_length);
                 } else {
                     update_msg_area(diff);
                 }
-                update_notification(data.messages[data.messages.length -1]);
-                write_sessionStorage('latest_msg_id', quizchat_msg.messages[quizchat_msg.messages.length - 1].id);
+                update_notification(filteredMessages[msgs_length -1]);
+                if(!full_screen_flag || user_or_qs_id == -1){
+                    write_sessionStorage('latest_msg_id', filteredMessages[msgs_length -1].id);
+                } else {
+                    write_sessionStorage('latest_msg_id_usr_qs', filteredMessages[msgs_length -1].id);
+                }
             }
             else {
+                quizchat_msg_prev = quizchat_msg;
                 quizchat_msg = data;
+                quizchat_msg_counters = compare_actual_and_prev_data(quizchat_msg_prev, quizchat_msg);
+                if(full_screen_flag && user_or_qs_id >= 0){
+                    quizchat_msg_usr_or_qs = filteredMessages;
+                }
                 update_message_headers();
+                update_sidemenu_status();
+                update_header_status();
+                if((typeof $('#conversations_container_private').html()) != 'undefined') {
+                    btn_msg_me_click();
+                }
+                if((typeof $('#conversations_container_group').html()) != 'undefined') {
+                    btn_msg_grp_click();
+                }
+            }
+        }
+        else if (msgs_length == 0) {
+            empty_private_group_msgs_count();
+            quizchat_msg_prev = quizchat_msg;
+            quizchat_msg = data;
+            quizchat_msg_counters = compare_actual_and_prev_data(quizchat_msg_prev, quizchat_msg);
+            if(full_screen_flag && user_or_qs_id >= 0){
+                quizchat_msg_usr_or_qs = filteredMessages;
+            }
+            update_message_headers();
+            update_sidemenu_status();
+            update_header_status();
+            if((typeof $('#conversations_container_private').html()) != 'undefined') {
+                btn_msg_me_click();
+            }
+            if((typeof $('#conversations_container_group').html()) != 'undefined') {
+                btn_msg_grp_click();
             }
         }
     };
@@ -169,7 +266,8 @@ export const poll_messages = (quizchatid) => {
                 "langstr_general" : lang_strings['student_question_general'],
                 "langstr_group" : lang_strings['group_txt'],
                 "langstr_attempt" : lang_strings['quiz_attempt_txt'],
-                "langstr_all" : lang_strings['everyone']
+                "langstr_all" : lang_strings['everyone'],
+                "langstr_strftimerecentfull" : lang_strings['strftimerecentfull']
             }
         }
     ];
@@ -233,41 +331,107 @@ export const poll_messages = (quizchatid) => {
                 }
                 else if(0 > data.stats.msg_total){
                     followUp(data);
+                    empty_private_group_msgs_count();
                 }
         });
     poll_timeout_id = setTimeout(poll_messages, poll_timeout, quizchatid);
 };
 
-const update_msg_area = (diff) => {
-    let new_msg = quizchat_msg.messages.slice(quizchat_msg.messages.length - diff);
-    let profimg = '';
-    let new_msg_user, new_msg_receiver, card_flavor, new_msg_el, msg_time;
-    if (0 < diff) {
-        var datesCachePromise = $.Deferred().resolve({}).promise();
-        // Search for all of the timestamp values in all of the messages in all of
-        // the days that we need to render.
-        var timestampsToFormat = new_msg.map(function(msg) {
-            return msg.timestamp;
-        });
-        if (timestampsToFormat.length) {
-            datesCachePromise = getString('strftimerecentfull', 'langconfig')
-                .then(function(format) {
-                    var requests = timestampsToFormat.map(function(timestamp) {
-                        return {
-                            timestamp: timestamp,
-                            format: format
-                        };
-                    });
-                    return UserDate.get(requests);
-                })
-                .then(function(formattedTimes) {
-                    return timestampsToFormat.reduce(function(carry, timestamp, index) {
-                        carry[timestamp] = formattedTimes[index];
-                        return carry;
-                    }, {});
-                });
-        }
-        datesCachePromise.then(function(datesCache) {
+const empty_private_group_msgs_count = () => {
+    if($('#private_msgs_count')) {
+        $('#private_msgs_count').html("0");
+    }
+    if($('#group_msgs_count')) {
+        $('#group_msgs_count').html("0");
+    }
+};
+
+export const allmsgs_count_notf = () => {
+    let key = 'newmsgscount_all';
+    let msgs_count = sessionStorage.getItem('moodle_qc_' + quizchat_userid + '_' + quizchatid + '_' + key);
+    if(null === msgs_count) {
+        write_sessionStorage(key, '0');
+        msgs_count = 0;
+    }
+    else {
+        msgs_count = int_sessionStorage(key);
+    }
+    if(msgs_count > 0 ) {
+        $('#all-messages-unread-count').html(String(msgs_count));
+        $('#all-messages-unread-count').attr('aria-hidden','false');
+        $('#all-messages-unread-count-label').removeClass('hidden');
+    }
+    else {
+        $('#all-messages-unread-count').attr('aria-hidden','true');
+        $('#all-messages-unread-count-label').addClass('hidden');
+        $('#all-messages-unread-count').html('');
+    }
+};
+
+export const getNewMessageCount = (prev, current) => {
+    const prevMessages = prev ? prev.split(',').map(Number) : [];
+    const currentMessages = current ? current.split(',').map(Number) : [];
+    let filteredmsgs = quizchat_msg.messages.filter(msg => currentMessages.includes(msg.id));
+    const newMessages = filteredmsgs.filter(msg => !prevMessages.includes(msg.id) &&
+    msg.id > int_sessionStorage('latest_msg_id') && (msg.userid != quizchat_userid));
+    return newMessages.length;
+};
+
+export const calculateUserMessageCounts = (prevUsers, currUsers) => {
+    return currUsers.map(currUser => {
+        const prevUser = prevUsers.find(u => u.userid === currUser.userid);
+        const new_msgs_count = prevUser
+            ? getNewMessageCount(prevUser.message_ids, currUser.message_ids)
+            : currUser.message_ids.replace(/\s/g, '').split(',').length; // All messages are new for a new user
+        // Determine if there is a new conversation
+        const new_conversation = !prevUser || new_msgs_count > 0;
+        return { ...currUser, new_msgs_count, new_conversation };
+    });
+};
+
+export const calculateGroupMessageCounts = (prevGroups, currGroups) => {
+    return currGroups.map(currGroup => {
+        const prevGroup = prevGroups.find(g => g.question_id === currGroup.question_id);
+        const new_msgs_count = prevGroup
+            ? getNewMessageCount(prevGroup.message_ids, currGroup.message_ids)
+            : currGroup.message_ids.replace(/\s/g, '').split(',').length; // All messages are new for a new group
+        // Determine if there is a new conversation
+        const new_conversation = !prevGroup || new_msgs_count > 0;
+        return { ...currGroup, new_msgs_count, new_conversation };
+    });
+};
+
+export const compare_actual_and_prev_data = (prevData, currData) => {
+    const newUserCounts = calculateUserMessageCounts(prevData.p_users || currData.p_users, currData.p_users);
+    const newGroupCounts = calculateGroupMessageCounts(prevData.groups || currData.groups, currData.groups);
+    return {
+        p_users: newUserCounts,
+        groups: newGroupCounts
+    };
+};
+
+export const update_current_msgs_array = (current_msgs) => {
+    if(current_msgs.length > 0) {
+        quizchat_msg_usr_or_qs = current_msgs;
+        most_recent_msg_id = current_msgs[current_msgs.length - 1].id;
+        processedDates = {};
+    }
+};
+
+export const update_msg_area = (diff) => {
+    let msgs, last_received_msg_id;
+    if(int_sessionStorage('selected_user_or_question_id') >= 0) {
+        msgs = quizchat_msg_usr_or_qs;
+        last_received_msg_id = int_sessionStorage('latest_msg_id_usr_qs');
+    } else if (!full_screen_flag || most_recent_msg_id > 0) {
+        msgs = quizchat_msg.messages;
+        last_received_msg_id = most_recent_msg_id;
+    }
+    if(typeof msgs != 'undefined') {
+        let new_msg = msgs.slice(msgs.length - diff);
+        let profimg = '';
+        let new_msg_user, new_msg_receiver, card_flavor, new_msg_el, msg_time;
+        if (0 < diff) {
             // Append only new messages to msg area
             for (let i = 0; i < new_msg.length; i++) {
                 new_msg_user = quizchat_users.find(u => u.id == new_msg[i].userid);
@@ -280,16 +444,14 @@ const update_msg_area = (diff) => {
                 card_flavor = new_msg[i].userid === quizchat_userid
                     ? 'bg-secondary'
                     : 'bg-light border border-secondary'
-                        + (most_recent_msg_id < new_msg[i].id ? ' font-weight-bolder' : '');
+                        + (last_received_msg_id < new_msg[i].id ? ' font-weight-bolder' : '');
                 new_msg_el = $('<div class="card block_quizchat_msg_el ' + card_flavor
                 + ' mb-1" data-msg-id="' + new_msg[i].id + '"></div>');
                 msg_time = new Date(new_msg[i].timestamp * 1000);
                 profimg = '<div class="imgcontainer"><img class="rounded profileimg" src="'
                 + new_msg_user.profileimageurlsmall
                 + '" alt="' + new_msg_user.fullname + '" title="' + new_msg_user.fullname + '"></img></div>';
-                var formattedDate = datesCache[new_msg[i].timestamp];
-                let dateKey = formattedDate.split(',').slice(0, 2).join(',');
-                let displayDate = isToday(new_msg[i].timestamp) ? lang_strings['today'] : dateKey;
+                let displayDate = isToday(new_msg[i].timestamp) ? lang_strings['today'] : new_msg[i].date_part;
                 // Check if a div for this date already exists
                 if (!processedDates[displayDate]) {
                     // If not, create a new div for this date
@@ -338,7 +500,12 @@ const update_msg_area = (diff) => {
                         + '</div>'
                     )
                 );
-
+                if($('#private_msgs_count')) {
+                    $('#private_msgs_count').html(quizchat_msg.stats.private);
+                }
+                if($('#group_msgs_count')) {
+                    $('#group_msgs_count').html(quizchat_msg.stats.group);
+                }
                 $('#block_quizchat_messages > .block_quizchat_msg_area_body').append(new_msg_el);
                 //trigger MathJax to render equations within the element with the class "card-body"
                 if (i == new_msg.length-1){
@@ -347,11 +514,19 @@ const update_msg_area = (diff) => {
                     $('.block_quizchat_msg_area_body').scrollTop($('.block_quizchat_msg_area_body')[0].scrollHeight);
                 }
             }
+            if(((typeof $('#conversations_container_private').html()) != 'undefined')) {
+                    btn_msg_me_click();
+            }
+            if((typeof $('#conversations_container_group').html()) != 'undefined') {
+                    btn_msg_grp_click();
+            }
             // Will unnotify in case drawer is open
             update_unnotify_timeout();
             update_message_headers();
+            update_sidemenu_status();
+            update_header_status();
             update_user_select_status_indicators();
-        });
+        }
     }
 };
 
@@ -391,7 +566,7 @@ const update_notification = (msg) => {
     }
 };
 
-const isToday = (date) => {
+export const isToday = (date) => {
     let today = new Date();
     let checkDate = new Date(date * 1000);
 
@@ -406,7 +581,44 @@ const unnotify = () => {
     write_sessionStorage('total_unread_msg', 0);
     $('.toast').remove();
     $('.block_quizchat_msg_el.font-weight-bolder').removeClass('font-weight-bolder');
-    $('#block_quizchat_messages > .block_quizchat_msg_area_header').text('0 ' + lang_strings['notification_new_msg_plural']);
+    if(full_screen_flag)
+    {
+        allmsgs_count_notf();
+        let header_question_or_user_id, header_is_allmsgs = false, side_counter_span_id;
+        if($('#conv-header').data('group-id') !== undefined) {
+            header_question_or_user_id = parseInt($('#conv-header').data('group-id'));
+            if(header_question_or_user_id == allmsgs_id)
+            {
+                header_is_allmsgs = true;
+            }
+            side_counter_span_id = '#unread-count-question-'+header_question_or_user_id;
+        }
+        else if($('#conv-header').data('user-id') !== undefined){
+            header_question_or_user_id = parseInt($('#conv-header').data('user-id'));
+            side_counter_span_id = '#unread-count-user-'+header_question_or_user_id;
+        }
+        if(header_is_allmsgs){
+            $('span[id^="unread-count-"]').attr('aria-hidden','true');
+            $('span[id^="unread-count-"]').parent('span').addClass('hidden');
+            $('span[id^="unread-count-"]').html('');
+        }
+        else {
+            $(side_counter_span_id).attr('aria-hidden','true');
+            $(side_counter_span_id).parent('span').addClass('hidden');
+            $(side_counter_span_id).html('');
+            let session_msgs_count_all = 0;
+            let key_all = 'newmsgscount_all';
+            Object.keys(sessionStorage).forEach(sessionkey => {
+                if (sessionkey.includes('newmsgscount_questionid_') || sessionkey.includes('newmsgscount_userid_')) {
+                    session_msgs_count_all += parseInt(sessionStorage.getItem(sessionkey));
+                }
+            });
+            write_sessionStorage(key_all, String(session_msgs_count_all));
+            allmsgs_count_notf();
+        }
+    } else {
+        $('#block_quizchat_messages > .block_quizchat_msg_area_header').text('0 ' + lang_strings['notification_new_msg_plural']);
+    }
     $('#new_msg_icon').remove();
 };
 
@@ -455,6 +667,7 @@ const create_respond_link = (userid, fullname, questionid, questiontxt) => {
     //'#userid/questionid/questiontxt'
     let respond_link = document.createElement('a');
     respond_link.setAttribute('href', '#' + userid + '/' + questionid + '/' + questiontxt);
+    respond_link.setAttribute('id', 'click_to_respond_link_' + userid + '_' + questionid + '_' + questiontxt);
     respond_link.append(document.createTextNode(fullname));
     respond_link.addEventListener('click', autofill_users_select);
     return respond_link;
@@ -482,6 +695,9 @@ const update_message_headers = () => {
                     let $questionlinkobj = $(msg.questiontxt);
                     // Extract the text inside the <a> tag
                     let questiontxt = $questionlinkobj.text();
+                    if(questiontxt == '') {
+                        questiontxt = msg.questiontxt;
+                    }
                     fullname_th.html(create_respond_link(msg.userid, msg_user.fullname, msg.questionid, questiontxt));
                 } else {
                     fullname_th.text(msg_user.fullname);
@@ -506,6 +722,43 @@ const update_message_headers = () => {
             state_indicator.addClass('statecircle-base ' + msg_user.state);
         }
     });
+};
+
+const update_sidemenu_status = () => {
+    $('.contact-status-sidemenu').each(function(i, el) {
+        let user;
+        if(quizchat_msg.p_users.length==1)
+        {
+            user = quizchat_msg.p_users[0];
+        }
+        else
+        {
+            user = quizchat_msg.p_users.find(u => u.userid === parseInt(el.getAttribute('data-user-id')));
+        }
+        if (Instructor.is_teacher) {
+            // Update state indicator depending on user state
+            let state_indicator = $('div.statecircle-base', $(el));
+            state_indicator.attr('title', lang_strings[user.state]);
+            state_indicator.removeClass();
+            state_indicator.addClass('statecircle-base ' + user.state);
+        }
+    });
+};
+
+const update_header_status = () => {
+    let state_indicator = $('#header-state');
+    let written_state_indicator = $('#written-header-state');
+    //update state indicator and written state
+    if (Instructor.is_teacher && state_indicator.length && full_screen_flag && written_state_indicator.length) {
+        let user = quizchat_msg.p_users.find(u => u.userid === parseInt(state_indicator.attr("data-user-id")));
+        if(typeof user == 'undefined') {
+            user = quizchat_users.find(u => u.id === parseInt(state_indicator.attr("data-user-id")));
+        }
+        state_indicator.attr('title', lang_strings[user.state]);
+        state_indicator.removeClass();
+        state_indicator.addClass('statecircle-base ' + user.state);
+        written_state_indicator.html(lang_strings[user.state]);
+    }
 };
 
 // Callback for mutations in drawer class list

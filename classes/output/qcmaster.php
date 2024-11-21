@@ -74,6 +74,8 @@ class qcmaster implements renderable, templatable {
         $seb_quizsettings = $DB->get_record('quizaccess_seb_quizsettings', array('quizid' => $quizid));
         $no_drawer_flag = (!preg_match('/\/mod\/quiz\/view\.php/', $PAGE->url)) && ((FALSE !== $seb_quizsettings) || ("-" !== $quiz->browsersecurity)) ? TRUE : FALSE;
         $fullscreen_flag = (preg_match('/\/blocks\/quizchat\/view\.php/', $PAGE->url)) ? TRUE : FALSE;
+        // Enable fullscreen mode if the url contains the fullscreen-url
+        $data->fullscreen = $fullscreen_flag;
         
         $quizchat = $DB->get_record('block_quizchat', array('quiz' => $quizid));
         
@@ -95,13 +97,19 @@ class qcmaster implements renderable, templatable {
             'everyone', 'instructors',
             'from', 'to', 'group',
             'unenrolled','deleted','abandoned',
-            'inprogress','noattempt','finished','suspended','student_question_select', 'student_question_general','group_txt', 'quiz_attempt_txt','today'
+            'inprogress','noattempt','finished','suspended','student_question_select', 'student_question_general','group_txt', 'quiz_attempt_txt','today', 'sidemenu_you','strftimerecentfull'
         ];
         $langstr_obj = new \stdClass();
         $plugin_name = 'block_quizchat';
         // Loop through the language keys and get the corresponding strings
         foreach ($lang_keys as $key) {
-            $langstr_obj->$key = get_string($key, $plugin_name);
+            if(strcmp($key, 'strftimerecentfull')  == 0) {
+                $langstr_obj->$key = get_string($key, 'core_langconfig');
+            }
+            else
+            {
+                $langstr_obj->$key = get_string($key, $plugin_name);
+            }
         }
         // Check if the user has any attempts for the quiz
         $enableblock = check_blockavailability($quizchat->quiz);

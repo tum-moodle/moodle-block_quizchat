@@ -31,6 +31,8 @@ class block_quizchat extends block_base
     public $timeout_val;
     public $title_message_to_teacher;
 
+    public $fmode;
+
     public static $quizchat_instance_added = false;
 
     public function init()

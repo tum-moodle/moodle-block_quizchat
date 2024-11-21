@@ -36,8 +36,6 @@ define('QUIZCHAT_UNNOTIFY_TIMEOUT_MAX', 60);
 define('QUIZCHAT_MSG_LENGTH_MIN', 1);
 define('QUIZCHAT_MSG_LENGTH_MAX', 5000);
 
-require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-
 /**
  * Given an object containing all the necessary data,
  * (defined by the form in block_form.php) this function
@@ -60,10 +58,11 @@ function quizchat_add_instance($quizchat) {
 /**
  * Checks if the current user has sendall-capability in a quizchat block context.
  * @param stdClass $quizchat quizchat record
+ * @param int $userid userid
  * @return bool true if the current user has sendall-capability
  */
 
-function check_sendallcap($quizchat)
+function check_sendallcap($quizchat, $userid = null)
 {
     global $DB;
     //sendall capability name as defined in access.php
@@ -77,7 +76,7 @@ function check_sendallcap($quizchat)
     // checking capbility of sendallcapname in quizchatblockcontext
     // according to https://moodledev.io/docs/apis/subsystems/access
     // has_capability Checks whether a user has a particular capability in a given context. By default checks the capabilities of the current user.
-    $checkcurrentusercap = has_capability($sendallcapname, $quizchatblockcontext);
+    $checkcurrentusercap = has_capability($sendallcapname, $quizchatblockcontext, $userid);
 
     return $checkcurrentusercap;
 }
@@ -243,38 +242,55 @@ function check_sendallcap($quizchat)
                     $attemptstate = 'deleted';
                 }
                 if (!empty($participant)) {
+                    $quizchat = $DB->get_record('block_quizchat', array('quiz' => $quizid));
                     if($questionid != QUIZCHAT_GENERAL_QUESTION_ID) {//filter participants menu with question id
-                        $participant_question_query = "SELECT qa.*, ques_a.questionid, q.name as questionname, ques_a.slot
-                            FROM {quiz_attempts} qa
-                            JOIN {question_attempts} ques_a
-                            ON qa.uniqueid = ques_a.questionusageid
-                            JOIN {question} q
-                            ON q.id = ques_a.questionid
-                            WHERE qa.quiz = ".$quizid."
-                            AND qa.timestart = (
-                                SELECT MAX(qa_max.timestart)
-                                FROM {quiz_attempts} qa_max
-                                WHERE qa_max.quiz = qa.quiz
-                                AND qa_max.userid = qa.userid
-                            )
-                            AND ques_a.questionid = ".$questionid.";"; 
-                        $participants_question = $DB->get_records_sql($participant_question_query);
-                        // Extract the userid values into a separate array
-                        $userIds = array_column($participants_question, 'userid');
+                        if(!check_sendallcap($quizchat, $participant->id )) {
+                            $participant_question_query = "SELECT qa.*, ques_a.questionid, q.name as questionname, ques_a.slot
+                                FROM {quiz_attempts} qa
+                                JOIN {question_attempts} ques_a
+                                ON qa.uniqueid = ques_a.questionusageid
+                                JOIN {question} q
+                                ON q.id = ques_a.questionid
+                                WHERE qa.quiz = ".$quizid."
+                                AND qa.timestart = (
+                                    SELECT MAX(qa_max.timestart)
+                                    FROM {quiz_attempts} qa_max
+                                    WHERE qa_max.quiz = qa.quiz
+                                    AND qa_max.userid = qa.userid
+                                )
+                                AND ques_a.questionid = ".$questionid.";"; 
+                            $participants_question = $DB->get_records_sql($participant_question_query);
+                            // Extract the userid values into a separate array
+                            $userIds = array_column($participants_question, 'userid');
 
-                        // Check if $participant->id exists in $userIds
-                        if (in_array($participant->id, $userIds)) {
-                            $filtereduser = [
-                                'id' => $participant->id,
-                                'firstname' => $participant->firstname,
-                                'lastname' => $participant->lastname,
-                                'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
-                                'profileimageurlsmall'=> $imgurl,
-                                'state' => $attemptstate,
-                                'questionname' => get_question_name_by_id($questionid),
-                                'questionid' => $questionid
-                            ];
-                            array_push($users_infos, $filtereduser);
+                            // Check if $participant->id exists in $userIds
+                            if (in_array($participant->id, $userIds)) {
+                                $filtereduser = [
+                                    'id' => $participant->id,
+                                    'firstname' => $participant->firstname,
+                                    'lastname' => $participant->lastname,
+                                    'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
+                                    'profileimageurlsmall'=> $imgurl,
+                                    'state' => $attemptstate,
+                                    'questionname' => get_question_name_by_id($questionid),
+                                    'questionid' => $questionid
+                                ];
+                                array_push($users_infos, $filtereduser);
+                            }
+                        }
+                        else {
+                                $filtereduser = [
+                                    'id' => $participant->id,
+                                    'firstname' => $participant->firstname,
+                                    'lastname' => $participant->lastname,
+                                    'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
+                                    'profileimageurlsmall'=> $imgurl,
+                                    'state' => $attemptstate,
+                                    'questionname' => get_question_name_by_id($questionid),
+                                    'questionid' => $questionid
+                                ];
+                                array_push($users_infos, $filtereduser);
+
                         }
                     }
                     else {
@@ -346,6 +362,28 @@ WHERE
 }
 
  /**
+ * Get quiz attempt id by quesion attempt id
+ * @param int $questionattemptid quesion attempt id
+ * @return int quiz attempt id
+ */
+function get_quizattid_by_quesattid ($questionattemptid) {
+    global $DB;
+    $query = "SELECT slot, questionusageid, questionid
+    FROM {question_attempts}
+    WHERE id= ".$questionattemptid.";";
+    $question_attempt_record = $DB->get_record_sql($query);
+    //$slot = $question_attempt_record->slot;
+    $questionusageid = $question_attempt_record->questionusageid;
+    //$questionid = $question_attempt_record->questionid;
+    $quizattempt_query = "SELECT id,attempt
+    FROM {quiz_attempts}
+    WHERE uniqueid= ".$questionusageid.";";
+    $quizattempt_record = $DB->get_record_sql($quizattempt_query);
+    $quizattemptid = $quizattempt_record->id;
+    return $quizattemptid;
+}
+
+ /**
  * Get the messages of a quizchat
  * @param int $quizchatid quizchat id
  * @param int $most_recent_msg_id most recent msg id
@@ -354,18 +392,19 @@ WHERE
  * @param string $langstr_attempt language string attempt
  * @return array messages array
  */
- function get_msgs($quizchatid,$most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all) {
+ function get_msgs($quizchatid,$most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull) {
     global $DB, $USER, $CFG;
     require_once($CFG->dirroot.'/mod/quiz/lib.php');
     $grp_langstr = $langstr_group;
     $msgStruct = [
         "stats" => [
             "msg_total" => 0,
-            "to_me" => 0,
-            "to_all" => 0,
-            "to_teachers" => 0
+            "private" => 0,
+            "group" => 0
         ],
-        "messages" => []
+        "messages" => [],
+        "p_users" => [],
+        "groups" => []
     ];
     // $PAGE->cm is not available so let's get the quizid from the quizchat tbl
     $quizchat = $DB->get_record('block_quizchat', array('id' => $quizchatid));
@@ -392,7 +431,8 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
             qchm.userid, 
             CASE 
                 WHEN qchm.questionid IS NULL THEN qchm.receiverid
-                WHEN qchm.questionid IS NOT NULL THEN ".QUIZCHAT_ADDRESS_QUESTION_GROUP."
+                WHEN qchm.questionid IS NOT NULL AND qchm.receiverid != 0 THEN qchm.receiverid
+                WHEN qchm.questionid IS NOT NULL AND qchm.receiverid = 0 THEN ".QUIZCHAT_ADDRESS_QUESTION_GROUP."
             END as receiverid,
             qchm.groupid, 
             qchm.timestamp, 
@@ -414,10 +454,14 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
                     (SELECT CONCAT(u2.lastname, ', ', u2.firstname) 
                      FROM {user} AS u2 
                      WHERE u2.id = qchm.receiverid) 
-                WHEN qchm.groupid = 0 AND qchm.questionid IS NOT NULL THEN 
+                WHEN qchm.groupid = 0 AND qchm.questionid IS NOT NULL AND qchm.receiverid = 0 THEN 
                     (SELECT CONCAT('".$grp_langstr."', ' ', ques.name) 
                      FROM {question} AS ques 
-                     WHERE ques.id = qchm.questionid) 
+                     WHERE ques.id = qchm.questionid)
+                WHEN qchm.groupid = 0 AND qchm.questionid IS NOT NULL AND qchm.receiverid != 0 THEN
+                    (SELECT CONCAT(u2.lastname, ', ', u2.firstname) 
+                    FROM {user} AS u2 
+                    WHERE u2.id = qchm.receiverid) 
             END AS rfullname,
             CASE 
                 WHEN qchm.groupid IN (1, 2) THEN qchg.name 
@@ -459,7 +503,7 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
         ."    AND ((qchm.receiverid = " . $USER->id ." OR qchm.groupid IN (".$allgrp_id.") OR qchm.userid = ".$USER->id.") "
         // If user is an instructor they may also poll messages sent to groupid = 2 (teachers group) or 0 (one to one messages: messages sent from teachers accounts)
         . ($hascap ? " OR qchm.groupid IN ( ".$teachersgrp_id.",0)" : "")
-        . ((!$hascap && $attempts)? " OR qchm.questionid IN ( ".$subquery.")" : "")
+        . ((!$hascap && $attempts)? " OR (qchm.questionid IN ( ".$subquery.") and qchm.receiverid = 0 and qchm.groupid = 0)" : "")
         ."    AND ctx.instanceid = qch.course)
         ORDER BY qchm.timestamp ASC;";
     $msg_records = $DB->get_records_sql($sqlquery);
@@ -485,24 +529,58 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
             $questioninfo = $info['slotorder'];
             $quizattemptnr = $info['quizattemptnr'];
             if($hascap) {$questionid = $info['questionid'];}
+            else {
+                $qzatt_id = get_quizattid_by_quesattid($record->questionattemptid);
+                //get slot url
+                $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
+                $can_nav = $attemptobj->can_navigate_to(intVal($info['slotorder']));
+                if($can_nav) {
+                    $slot_url = $attemptobj->attempt_url(intVal($info['slotorder']));
+                    $slot_url_str = $slot_url->out(false);
+                    $slot_order = $info['slotorder'];
+                    $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$slot_order</a>";
+                } else {
+                    $questioninfo = $info['slotorder'];
+                }
+            }
         }
         if(!is_null($record->questionid)&&$hascap) {
-            $questioninfo = get_question_name_by_id($record->questionid);
+            $q_name = get_question_name_by_id($record->questionid);
+            $questionid = $record->questionid;
+            //question link
+            $questionpreviewurl = new \moodle_url('/question/bank/previewquestion/preview.php', ['cmid' => $quizchat->cmid, 'id' => $record->questionid]);
+            $questionpreviewlink = $questionpreviewurl->out(false);
+            $questioninfo = "<a href=\"{$questionpreviewlink}\" id='questionref_link_{$questionid}' class='questionref' onclick=\"window.open('{$questionpreviewlink}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
+            
         }
         if(!is_null($record->questionid)&&!$hascap) {
             $question_info_user = $USER->id;
             $qzatt_id= get_last_inprogress_quizattempt_id($USER->id,$quizchat->quiz);
             $questionatt_id = get_questionattemptid_in_quizattempt($record->questionid, $qzatt_id);
             $info = get_questioninfo($questionatt_id, $hascap, $quizchat->id, $question_info_user, $langstr_attempt, $langstr_general);
-            $questioninfo = $info['slotorder'];
+            $slotorder_str = $info['slotorder'];
             $quizattemptnr = $info['quizattemptnr'];
+            //get slot url
+            $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
+            $can_nav = $attemptobj->can_navigate_to(intVal($slotorder_str));
+            if($can_nav) {
+                $slot_url = $attemptobj->attempt_url(intVal($slotorder_str));
+                $slot_url_str = $slot_url->out(false);
+                $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$slotorder_str</a>";
+            } else {
+                $questioninfo = $slotorder_str;
+            }
         }
+        //date
+        $timestamp_parts = explode(',', userdate($record->timestamp, $langstr_strftimerecentfull));
+        $date_part = trim($timestamp_parts[0]) . ', ' . trim($timestamp_parts[1]);
         array_push($msgStruct['messages'], [
             'id' => $id,
             'userid' => $record->userid,
             'receiverid' => $receiverid,
             'groupid' => $record->groupid,
             'timestamp' => $record->timestamp,
+            'date_part' => $date_part,
             'message' => $record->message,
             'fullname' => $record->fullname,
             'state' => $record->state,
@@ -516,17 +594,136 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
             'quizattempt' => $quizattemptnr,
             'questionid' => $questionid
         ]);
-        if($record->receiverid == 0 && $record->groupid == $allgrp_id)
+        if($record->groupid == $allgrp_id || !is_null($record->questionid))
         {
-            $msgStruct['stats']['to_all']++;
+            $msgStruct['stats']['group'] ++;
         }
-        else if($record->receiverid == 0 && $record->groupid == $teachersgrp_id)
+        else
         {
-            $msgStruct['stats']['to_teachers']++;
+            $msgStruct['stats']['private'] ++;
         }
     }
-    $msgStruct['stats']['to_me'] = count($msgStruct['messages']);
-    $msgStruct['stats']['msg_total'] = $msgStruct['stats']['to_me'];
+    $msgStruct['stats']['msg_total'] = count($msgStruct['messages']);
+    //get private conversations between the current logged in user and others
+    if($hascap) {
+        $dbfamily = $DB->get_dbfamily();
+        $sqlquery_p_users =
+            "SELECT DISTINCT
+            u.id as userid, 
+            u.firstname, 
+            u.lastname, 
+            CONCAT(u.lastname, ', ', u.firstname) AS fullname,
+            u.picture, 
+            CASE
+                WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
+                WHEN u.deleted = 1 THEN 'deleted' 
+                WHEN u.suspended = 1 THEN 'suspended'
+                ELSE COALESCE(qa.state, 'noattempt')
+            END AS state, "
+            .($dbfamily == 'postgres' ? "(SELECT STRING_AGG(qcm_sub.id::text, ', ')
+            FROM (
+                SELECT DISTINCT qcm.id, qcm.timestamp
+                FROM {block_quizchat_messages} AS qcm
+                WHERE (qcm.userid = u.id OR qcm.receiverid = u.id)
+                AND qcm.quizchatid = ". $quizchat->id.
+                " ORDER BY qcm.timestamp ASC
+            ) AS qcm_sub) AS message_ids" 
+            : " GROUP_CONCAT(DISTINCT qcm.id ORDER BY qcm.timestamp ASC SEPARATOR ', ') as message_ids")
+            ." FROM 
+            {user} as u
+        JOIN
+        (
+            SELECT DISTINCT id as user_id
+            FROM
+            (
+                SELECT 
+                    CASE 
+                        WHEN pmsgs.groupid = ".$teachersgrp_id." OR pmsgs.receiverid = ".$USER->id." THEN pmsgs.userid
+                        ELSE pmsgs.receiverid
+                    END as id
+                FROM 
+                (
+                    SELECT *
+                    FROM {block_quizchat_messages} as qchm
+                    WHERE qchm.quizchatid = " . $quizchat->id
+                    ."  AND ((qchm.receiverid = ".$USER->id." AND qchm.groupid IN (0)) OR (qchm.userid = ".$USER->id." AND qchm.groupid IN (0)) OR (qchm.groupid = ".$teachersgrp_id."))  
+                    AND qchm.groupid NOT IN (".$allgrp_id.") 
+                    AND ((qchm.questionid IS not NULL and qchm.receiverid != 0) or (qchm.questionid IS NULL and qchm.groupid in (0,".$teachersgrp_id.")))
+                    ORDER BY qchm.timestamp ASC
+                ) as pmsgs
+                WHERE ((pmsgs.receiverid = ".$USER->id." OR pmsgs.userid = ".$USER->id." OR pmsgs.groupid = ".$teachersgrp_id."))
+            ) AS userids
+        ) as u_ids
+        ON u.id = u_ids.user_id
+        LEFT JOIN {role_assignments} AS ra 
+            ON u.id = ra.userid
+        LEFT JOIN {quiz_attempts} AS qa
+            ON u_ids.user_id = qa.userid 
+            AND qa.quiz = " . $quizchat->quiz
+            ." AND qa.timestart = (
+                SELECT MAX(qa_max.timestart)
+                FROM {quiz_attempts} as qa_max
+                WHERE qa_max.quiz = qa.quiz
+                AND qa_max.userid = qa.userid
+            )".($dbfamily == 'postgres' ? "WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz . 
+            " GROUP BY u.id, u.firstname, u.lastname, u.picture, u.deleted, u.suspended, ra.userid, state;" 
+        : "JOIN {block_quizchat_messages} as qcm
+            ON ((qcm.userid = u.id AND (qcm.receiverid = ".$USER->id." OR qcm.groupid = ".$teachersgrp_id.")) OR qcm.receiverid = u.id) AND (qcm.groupid != ".$allgrp_id." AND ((qcm.questionid IS not NULL and qcm.receiverid != 0) or (qcm.questionid IS NULL and qcm.groupid in (0,".$teachersgrp_id."))))
+            AND qcm.quizchatid = " . $quizchat->id
+            ." WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz
+            ." GROUP BY u.id, u.firstname, u.lastname, u.picture, state;");
+        $p_users_records = $DB->get_records_sql($sqlquery_p_users);
+        foreach($p_users_records as $id => $record){
+            array_push($msgStruct['p_users'], [
+                'userid' => $record->userid,
+                'firstname' => $record->firstname,
+                'lastname' => $record->lastname,
+                'fullname' => $record->fullname,
+                'picture' => get_user_pic_url($record->userid),
+                'state' => $record->state,
+                'message_ids' => $record->message_ids
+            ]);
+        }
+        //get the group messages
+        $groupedMessages = array();
+        // $default_image_url = new moodle_url('/theme/image.php', array('theme' => 'boost', 'component' => 'core', 'image' => 'u/f2'));
+        // $userimg->size = 0;
+        // if(!isset($PAGE->context))
+        // {
+        //     $PAGE->set_context(context_system::instance());
+        // }
+        // $imgurl = $userimg->get_url($PAGE)->out(false);
+        //$grp_pic = "";//$CFG->wwwroot . '/theme/image.php/boost/core/u/f2';//$default_image_url->out();
+        foreach ($msgStruct['messages'] as $message) {
+            if (($message['quizattempt'] == " " && $message['questionid'] > 0 && $message['receiverid'] == QUIZCHAT_ADDRESS_QUESTION_GROUP) || $message['groupid'] == $allgrp_id) {
+                //$grp_pic = new pix_icon('g/g1', ($message['groupid'] == $allgrp_id?$langstr_all:$message['rfullname']));
+                $questionId = $message['questionid'];
+                if (!isset($groupedMessages[$questionId])) {
+                    // Initialize entry for the first time we encounter this questionid
+                    $groupedMessages[$questionId] = array(
+                        'question_id' => $questionId,
+                        'group_name' => ($message['groupid'] == $allgrp_id?$langstr_all:$message['rfullname']),
+                        'picture' => " ",
+                        'message_ids' => array()
+                    );
+                }
+                // Append the message id to the list of message_ids for this questionid
+                $groupedMessages[$questionId]['message_ids'][] = $message['id'];
+            }
+        }
+
+        // Convert message_ids arrays to comma-separated strings
+        foreach ($groupedMessages as &$group) {
+            $group['message_ids'] = implode(',', $group['message_ids']);
+        }
+
+        // Add the grouped messages to the 'groups' array
+        $msgStruct['groups'] = array_values($groupedMessages);
+
+        $msgStruct['stats']['private'] = count($msgStruct['p_users']);
+        $msgStruct['stats']['group'] = count($msgStruct['groups']);
+
+    }
 }
 else
 {
@@ -566,18 +763,32 @@ function check_blockavailability($quizid)
  * @param int $questionid question attempt id
  * @return bool true if enabled and false otherwise
  */
-function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questionattemptid, $questionid)
+function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questionattemptid, $questionid,  $senderid = null)
 {
     global $USER, $DB;
+    $sender_id = null;
+    if(is_null($senderid)) {
+        $sender_id = $USER->id;
+    }
+    else {
+        $sender_id = $senderid;
+    }
     $quizchat = $DB->get_record('block_quizchat', array('id' => $quizchatid));
+
+    $hascap = null;
     //check sendall capability of the current user
-    $hascap = check_sendallcap($quizchat);
+    if(is_null($senderid)) {
+        $hascap = check_sendallcap($quizchat);
+    }
+    else {
+        $hascap = check_sendallcap($quizchat, $sender_id);
+    }
     //get teachers group id
     $teachersgrp_id = intVal($DB->get_record('block_quizchat_group', array('name' => 'teachers'))->id);
     // Check if the user has any attempts for the quiz
     $enableblock = check_blockavailability($quizchat->quiz);
     // Sending to anyone other than instructor 'group'? Let's see if you may! or didn't attempt the quiz and tries to send msg
-    if(($teachersgrp_id !== $groupid && !$hascap)||(!$hascap && !$enableblock)){
+    if(($teachersgrp_id !== (int)$groupid && !$hascap)||(!$hascap && !$enableblock)){
         return -1;
     }
     $question_attemptid = null;
@@ -596,28 +807,30 @@ function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questiona
     {
         $question_attemptid = null;//questionattemptid is null in teacher messages. questionid is used in that case.
         if(($groupid == 0) && ($receiverid != 0) && (!is_null($question_id))) {
-            //if question is selected and a specific user is also selected, I don't need to save question in that case. 
-            //questionid is needed only in case of question group messages to get receiver ids who got that question.
-            //but I need to get the questionattemptid with (receiverid & question_id) and then save question_attemptid
-            //$question_id = null;
-            $attempt_query = "SELECT ques_a.id as questionattemptid, last_qa.attempt , ques_a.questionid, ques_a.slot, last_qa.layout
-            FROM {question_attempts} as ques_a
-            join (SELECT *
-                    FROM {quiz_attempts}
-                    WHERE userid = " .$receiverid. "
-                    AND quiz = ".$quizchat->quiz."
-                    ORDER BY timestart DESC
-                    LIMIT 1) as last_qa 
-            on last_qa.uniqueid = ques_a.questionusageid
-            where ques_a.questionid = ".$question_id.";";
-            $question_attempt_record = $DB->get_record_sql($attempt_query);
-            $question_attemptid = $question_attempt_record->questionattemptid;
-            $question_id = null;
+            //check if the receiverid has sendall cap or not
+            $receiver_hascap = check_sendallcap($quizchat, $receiverid);
+            if(!$receiver_hascap) {
+                //if question is selected and a specific user is also selected, question id should be saved if receiver has sendall-cap. Otherweise, questionattemptid should be saved.  
+                //get the questionattemptid with (receiverid & question_id) and then save questionattemptid
+                $attempt_query = "SELECT ques_a.id as questionattemptid, last_qa.attempt , ques_a.questionid, ques_a.slot, last_qa.layout
+                FROM {question_attempts} as ques_a
+                join (SELECT *
+                        FROM {quiz_attempts}
+                        WHERE userid = " .$receiverid. "
+                        AND quiz = ".$quizchat->quiz."
+                        ORDER BY timestart DESC
+                        LIMIT 1) as last_qa 
+                on last_qa.uniqueid = ques_a.questionusageid
+                where ques_a.questionid = ".$question_id.";";
+                $question_attempt_record = $DB->get_record_sql($attempt_query);
+                $question_attemptid = $question_attempt_record->questionattemptid;
+                $question_id = null;
+            }
         }
     }
     $message = [
         "quizchatid" => $quizchatid,
-        "userid" => $USER->id,
+        "userid" => $sender_id,
         "receiverid" => $receiverid,
         "message" => $messagetext,
         "groupid" => $groupid,
@@ -626,6 +839,16 @@ function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questiona
         "questionid" => $question_id
     ];
     $msg_id = $DB->insert_record('block_quizchat_messages', $message);
+    // Trigger the event.
+    $event = \block_quizchat\event\message_sent::create(array(
+        'objectid' => $msg_id,
+        'contextid' => $quizchat->contextid,
+        'other' => array(
+            'blockinstanceid' => $quizchat->instanceid,
+            'cmid' => $quizchat->cmid
+        )
+    ));
+    $event->trigger();
     return $msg_id;
 }
 /**
@@ -642,7 +865,8 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
 {
    $questioninfo = [];
    $questions = ["questions" => []];
-   global $DB, $USER;
+   global $DB, $USER, $CFG;
+   require_once($CFG->dirroot . '/mod/quiz/locallib.php');
    $quizchat = $DB->get_record('block_quizchat', array('id' => $quizchatid));
    //$generalstring = get_string('student_question_general', 'block_quizchat');
    //check sendall capability of the current user
@@ -884,7 +1108,7 @@ function get_questioninfo($questionattemptid, $has_sendallcap, $quizchatid, $use
                     } else {
                         //get slot number and display it as question info in student view
                         $q_name = get_question_name_by_id($question['questionid']);
-                        $slotorder = "<a href=\"{$question['questionlink']}\" class='questionref' onclick=\"window.open('{$question['questionlink']}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
+                        $slotorder = "<a href=\"{$question['questionlink']}\" id='questionref_link_{$question['questionid']}' class='questionref' onclick=\"window.open('{$question['questionlink']}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
                     }
                     break 2;
                 }

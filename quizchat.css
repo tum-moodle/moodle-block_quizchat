@@ -452,3 +452,33 @@ ul#block_quizchat_keyStatusColor {
 .form-autocomplete-suggestions {
     position: relative;
 }
+
+#block_quizchat_messages {
+    position: relative !important;
+}
+
+.message-app .contact-status-sidemenu {
+    position: absolute;
+    left: 45px;
+    top: 50px;
+}
+
+.header-container .contact-status-header {
+    position: absolute;
+    left: 50px;
+    top: 44px;
+}
+
+a[id^="click_to_respond_link_"],
+a[id^="questionref_link_"],
+a[id="allmsgs_link"] {
+    color: #0f6cbf;
+    text-decoration: none;
+    background-color: transparent;
+}
+
+a[id="allmsgs_link"]:hover, 
+a[id^="click_to_respond_link_"]:hover, 
+a[id^="questionref_link_"]:hover {
+    text-decoration: underline;
+}

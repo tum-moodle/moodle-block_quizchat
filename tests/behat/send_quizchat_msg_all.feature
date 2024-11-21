@@ -42,6 +42,7 @@ Feature: send and recieve a message in a quizchat
     And I wait until the page is ready
     And I set the field "block_quizchat_input_instructor_send" to "I'm teacher 1"
     And I press "Send"
+    #And I pause the test until return is pressed
     Then I should see "I'm teacher 1"
     And I log in as "teacher2"
     And I am on the "Quiz 1" "mod_quiz > View" page

@@ -22,6 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
+
 class behat_block_quizchat extends behat_base {
 
   /**
@@ -118,6 +119,79 @@ class behat_block_quizchat extends behat_base {
       $record->gradednotificationsenttime =      $lastattempt->gradednotificationsenttime;
       
       $sql = $DB->update_record('quiz_attempts', $record); 
+}
+
+  /**
+     * Send message in the last created Quizchat block.
+     *
+     * @param string $message the Quizchat message.
+     * @param string $senderusername the username of the sender.
+     * @param string $receiverusername the username of the receiver (private) or the name of the receiving group (all or teachers).
+     * @param string $questionname the name of the question (if exist or general) that should be referenced in the message.
+     * @param string $quizname the name of Quizchat quiz.
+     * @Given /^A Quizchat message "([^"]*)" is sent from "([^"]*)" to "([^"]*)" about question "([^"]*)" at quiz "([^"]*)"$/
+     */
+    public function a_quizchat_message_is_sent_from_to_about_question_at_quiz($message, $senderusername, $receiverusername, $questionname, $quizname) {
+      global $DB;
+      require_once(__DIR__ . '/../../lib/lib.php');
+
+      $quizid = $DB->get_field('quiz', 'id', ['name' => $quizname], MUST_EXIST);
+      $qchat = $DB->get_record('block_quizchat', ['quiz' => $quizid], '*', MUST_EXIST);
+      if($qchat) {
+      $senderid = $DB->get_field('user', 'id', ['username' => $senderusername], MUST_EXIST);
+      $receiverid = -1;
+      $groupid = -1;
+      $questionid = -1;
+      if(strcmp($questionname, 'general') == 0) {//general question
+        if(strcmp($receiverusername, 'all') == 0 || strcmp($receiverusername, 'teachers') == 0) {
+          $receiverid = 0;
+          $groupid = $DB->get_field('block_quizchat_group', 'id', ['name' => $receiverusername], MUST_EXIST);
+        } else {
+          $receiverid = $DB->get_field('user', 'id', ['username' => $receiverusername], MUST_EXIST);
+          $groupid = 0;
+        }
+        $questionid = null;
+      } else {// a question is selected
+        if (strcmp($receiverusername, 'teachers') == 0) {// to teachers
+          $receiverid = 0;
+          $groupid = $DB->get_field('block_quizchat_group', 'id', ['name' => $receiverusername], MUST_EXIST);
+        } else if (strcmp($receiverusername, 'group') == 0) { // to question group
+          $receiverid = 0;
+          $groupid = 0;
+        }
+        else {// to user
+          $receiverid = $DB->get_field('user', 'id', ['username' => $receiverusername]);
+          if(!$receiverid) {
+            $receiverid = 0;
+          }
+          $groupid = 0;
+        }
+        $questionid = $DB->get_field('question', 'id', ['name' => $questionname], MUST_EXIST);
+      }
+      $questionattemptid = null;
+      $sender_hascap = check_sendallcap($qchat, $senderid);
+      if(!$sender_hascap && !is_null($questionid) ) {
+        //implelment student reference a question
+        $attempt_query = "SELECT ques_a.id as questionattemptid, last_qa.attempt , ques_a.questionid, ques_a.slot, last_qa.layout
+        FROM {question_attempts} as ques_a
+        join (SELECT *
+                FROM {quiz_attempts}
+                WHERE userid = " .$senderid. "
+                AND quiz = ".$qchat->quiz."
+                ORDER BY timestart DESC
+                LIMIT 1) as last_qa 
+        on last_qa.uniqueid = ques_a.questionusageid
+        where ques_a.questionid = ".$questionid.";";
+        $question_attempt_record = $DB->get_record_sql($attempt_query);
+        $questionattemptid = $question_attempt_record->questionattemptid;
+        $questionid = null;
+      }
+
+      return create_msg($qchat->id, $receiverid, $message, $groupid, $questionattemptid, $questionid, $senderid);
+    }
+    else {
+      return -1;
+    }
 }
 
 /**

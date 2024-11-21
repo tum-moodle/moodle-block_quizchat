@@ -44,8 +44,8 @@ $PAGE->set_title($theblock->title);
 $PAGE->set_heading($theblock->title);
 $PAGE->set_cm($cm);
 $content = $theblock->get_content();
-
 echo $OUTPUT->header();
 echo $OUTPUT->heading($theblock->title);
+echo html_writer::empty_tag('br');
 echo html_writer::div($content->text, 'block-content');
 echo $OUTPUT->footer();

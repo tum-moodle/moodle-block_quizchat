@@ -30,4 +30,10 @@ $observers = [
         'internal'  => true,
         'priority'    => 9999,
     ],
+    [
+        'eventname' => '\block_quizchat\event\message_sent',
+        'callback' => '\block_quizchat\quizchat_observers::message_sent',
+        'internal'  => true,
+        'priority'    => 9999,
+    ],
 ];

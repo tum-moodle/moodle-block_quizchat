@@ -37,6 +37,7 @@
     }
 }}
 
+{{^is_teacher}}
 <div class="container pl-0 pr-0" id="block_quizchat_messages" data-action="block_quizchat/messages">
     <span class="block_quizchat_msg_area_header">0 {{#str}} notification_new_msg_plural, block_quizchat{{/str}}</span>
     <div class="block_quizchat_msg_area_body">
@@ -59,11 +60,142 @@
         ]);
     </script>
 </div>
-
-{{^is_teacher}}
 {{> block_quizchat/studentblock }}
 {{/is_teacher}}
 
 {{#is_teacher}}
+{{^fullscreen}}
+<div class="container pl-0 pr-0" id="block_quizchat_messages" data-action="block_quizchat/messages">
+    <span class="block_quizchat_msg_area_header">0 {{#str}} notification_new_msg_plural, block_quizchat{{/str}}</span>
+    <div class="block_quizchat_msg_area_body">
+    </div>
+    <div class="block_quizchat_msg_area_footer">
+    </div>
+    <script type="text/javascript" src="{{{mathjax_url}}}">
+        {{{mathjax_config}}}
+        window.MathJax.Hub.Queue([
+                    "Typeset",
+                    window.MathJax.Hub, document.getElementsByClassName("card-body"),
+                    () => {
+                             document.addEventListener('DOMContentLoaded', function() {
+                            var elements = document.querySelectorAll('.block_quizchat_msg_area_body');
+                            elements.forEach(function(element) {
+                                element.scrollTop = element.scrollHeight;
+                            });
+                        });
+                    }
+        ]);
+    </script>
+</div>
 {{> block_quizchat/instructorblock }}
+{{/fullscreen}}
+
+{{#fullscreen}}
+<div id="fs_bg" class="message-app main bg-light border flex-row">
+    <div id="fullscreen-page" class="container-fluid">
+        <div class="row h-100 no-gutters">
+            <div class="col-3 d-flex flex-column conversationcontainer">
+                <div class="border-right h-100">
+                    <div class="panel-header-container">
+                        <div class="border-bottom p-1 px-sm-2" data-in-panel="true" data-region="view-overview" data-from-panel="false" data-init="true">
+                            <div class="text-left mt-sm-3">
+                                <a href="#-1" id="allmsgs_link" data-route="view-contacts" role="button">All messages</a>
+                                <span class="badge rounded-pill bg-primary text-white ml-auto hidden" data-region="section-unread-count-container" aria-labelledby="all-messages-unread-count-label" id="all-messages-unread-count-label">
+                                    <span aria-hidden="true" data-region="all-messages-unread-count" id="all-messages-unread-count"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-body-container">
+                        <div class="h-100 view-overview-body previous">
+                            <div class="d-flex flex-column h-100" style="overflow-y: auto">
+                                <div class="section border-0 card rounded-0">
+                                    <div class="card-header rounded-0" data-region="toggle">
+                                        <button type="button" class="btn btn-link w-100 text-left p-1 p-sm-2 d-flex rounded-0 align-items-center overview-section-toggle collapsed" data-toggle="collapse" aria-expanded="false" aria-controls="msg_me" data-target="#msg_me" id="btn_msg_me">
+                                            <span class="collapsed-icon-container">
+                                                <i class="icon fa fa-caret-right fa-fw " aria-hidden="true"></i>
+                                            </span>
+                                            <span class="expanded-icon-container">
+                                                <i class="icon fa fa-caret-down fa-fw " aria-hidden="true"></i>
+                                            </span>
+                                            <span class="font-weight-bold">
+                                                Private<small class="ml-1">(<span id="private_msgs_count">0</span>)</small>
+                                            </span>
+                                            <span class="badge rounded-pill bg-primary text-white ml-auto hidden" data-region="section-unread-count-container" aria-labelledby="view-overview-messages-unread-count-label" id="view-overview-messages-unread-count-label">
+                                                    <span aria-hidden="true" data-region="section-unread-count" id="section-unread-count-private"></span>
+                                            </span>
+                                        </button>
+                                        <div id="msg_me" class="collapse">
+                                            <div class="border-bottom lazy-load-list collapse show" id="view-overview-messages-target">
+                                                <div class="list-group" data-region="content-container" id='conversations_container_private'>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="section border-0 card rounded-0">
+                                    <div class="card-header rounded-0" data-region="toggle">
+                                        <button type="button" class="btn btn-link w-100 text-left p-1 p-sm-2 d-flex rounded-0 align-items-center overview-section-toggle collapsed" data-toggle="collapse" aria-expanded="false" aria-controls="msg_all" data-target="#msg_all" id="btn_msg_all">
+                                            <span class="collapsed-icon-container">
+                                                <i class="icon fa fa-caret-right fa-fw " aria-hidden="true"></i>
+                                            </span>
+                                            <span class="expanded-icon-container">
+                                                <i class="icon fa fa-caret-down fa-fw " aria-hidden="true"></i>
+                                            </span>
+                                            <span class="font-weight-bold">
+                                                Group<small class="ml-1">(<span id="group_msgs_count">0</span>)</small>
+                                            </span>
+                                            <span class="badge rounded-pill bg-primary text-white ml-auto hidden" data-region="section-unread-count-container" aria-labelledby="view-overview-group-messages-unread-count-label" id="view-overview-group-messages-unread-count-label">
+                                                    <span aria-hidden="true" data-region="section-unread-count" id="section-unread-count-group"></span>
+                                            </span>
+                                        </button>
+                                        <div id="msg_all" class="collapse">
+                                            <div class="border-bottom lazy-load-list collapse show" id="view-overview-messages-target">
+                                                <div class="list-group" data-region="content-container" id='conversations_container_group'>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-8 d-flex flex-column">
+                <div class="header-container position-relative">
+
+                </div>
+                <div class="body-container position-relative">
+                <div class="container pl-0 pr-0" id="block_quizchat_messages" data-action="block_quizchat/messages">
+                    <div class="block_quizchat_msg_area_body">
+                    </div>
+                    <div class="block_quizchat_msg_area_footer">
+                    </div>
+                    <script type="text/javascript" src="{{{mathjax_url}}}">
+                        {{{mathjax_config}}}
+                        window.MathJax.Hub.Queue([
+                                    "Typeset",
+                                    window.MathJax.Hub, document.getElementsByClassName("card-body"),
+                                    () => {
+                                             document.addEventListener('DOMContentLoaded', function() {
+                                            var elements = document.querySelectorAll('.block_quizchat_msg_area_body');
+                                            elements.forEach(function(element) {
+                                                element.scrollTop = element.scrollHeight;
+                                            });
+                                        });
+                                    }
+                        ]);
+                    </script>
+                </div>
+                </div>
+                <div class="footer-container position-relative">
+                {{> block_quizchat/instructorblock }}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{{/fullscreen}}
 {{/is_teacher}}

@@ -43,4 +43,14 @@ class quizchat_observers {
             \core\notification::info(get_string('attempt_deleted_notification', 'block_quizchat'));
         }
     }
+
+    /**
+     * Quizchat message sent event
+     *
+     * @param \block_quizchat\event\message_sent $event
+     */
+    public static function message_sent(\block_quizchat\event\message_sent $event) {
+        $messageid = $event->objectid;
+        //\core\notification::info("A new Quizchat message with ID $messageid was sent.");
+    }
 }
