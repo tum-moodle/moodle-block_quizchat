@@ -60,6 +60,7 @@ let htmlContent_questions;
 let htmlContent_q_select;
 let htmlContent_p_select;
 let noparticipant_flag = false;
+let li_clicked = false;
 let grp_img_white = M.util.image_url('g/g1', 'core');
 let grp_img_white_grey = M.cfg.wwwroot+ '/blocks/quizchat/img/g1_white_grey.png';
 export var is_teacher = false;
@@ -326,7 +327,7 @@ const questions_select_change = () => {//onchange_event
     // Reset style of select label on correct selection
     $('#id_block_quizchat_questions_select_label').css({'color': '#000', 'font-weight': 'normal'});
     let group_string = lang_strings['group_txt'];
-    let everyone_string = lang_strings['everyone'];
+    //let everyone_string = lang_strings['everyone'];
     let questionid;
     let participantid;
     // => get selected option from span[role="option"]
@@ -339,18 +340,11 @@ const questions_select_change = () => {//onchange_event
             participantid = $('#fitem_id_block_quizchat_users_select span[role="option"]')[0].dataset.value;
             if(questionid == String(quizchat_general_question_id)) {//general question 0
                 if(participantid != String(quizchat_address_everyone)) {
-                    if($('#block_quizchat_instructor_form li[data-value="'+ quizchat_address_everyone + '"]').length == 0){
-                        //remove the selected participant
-                        $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
-                        $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                        //select everyone in participants
-                        checkIfElementExists(
-                            '#block_quizchat_instructor_form div.participant-name-menu[title="'+ everyone_string +'"]'
-                        );
-                    }
-                    else {
-                        $('#block_quizchat_instructor_form li[data-value="'+ quizchat_address_everyone + '"]').trigger('click');
-                    }
+                    //remove the selected participant
+                    $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
+                    $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                    //select everyone in participants
+                    observeForElement('#block_quizchat_instructor_form li');
                 }
             }
             else {//question selected (not general) and there is selected participant
@@ -361,32 +355,16 @@ const questions_select_change = () => {//onchange_event
                 if(participantid != quizchat_address_question_group)
                  //selected_participant_name != allgrouptxt
                 {
-                    if($('#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]').length == 0){
-                        //remove the selected participant
-                        $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
-                        $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                        checkIfElementExists(
-                            '#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]'
-                        );
-                    }
-                    else {
-                        $('#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]').trigger('click');
-                    }
+                    //remove the selected participant
+                    $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
+                    $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                    observeForElement('#block_quizchat_instructor_form li');
                 }
                 else {
                     if(selected_participant_name != allgrouptxt) {
-                        if($('#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]').length == 0){
-                            $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
-                            $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                            checkIfElementExists(
-                                '#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]'
-                            );
-                        }
-                        else
-                        {
-                            $('#block_quizchat_instructor_form div.participant-name-menu[title="'+ allgrouptxt + '"]')
-                            .trigger('click');
-                        }
+                        $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
+                        $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                        observeForElement('#block_quizchat_instructor_form li');
                     }
                 }
             }
@@ -394,30 +372,13 @@ const questions_select_change = () => {//onchange_event
         else {//there is selected question but no participant is selected
             if(questionid == String(quizchat_general_question_id)) {//general question 0
                 //remove the selected participant
-                if($('#block_quizchat_instructor_form div.participant-name-menu[title="'+ everyone_string +'"]').length == 0) {
-                    $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                    //select everyone in participants
-                    checkIfElementExists(
-                        '#block_quizchat_instructor_form div.participant-name-menu[title="'+ everyone_string +'"]'
-                    );
-                }
-                else {
-                    $('#block_quizchat_instructor_form div.participant-name-menu[title="'+ everyone_string +'"]').trigger('click');
-                }
+                $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                observeForElement('#block_quizchat_instructor_form li');
             }
             else {//question selected
                 //select question group in participants
-                let gname = $('#block_quizchat_questions_form span[role="option"] div.divcontainer-questions').attr('title');
-                if(document.querySelector('#block_quizchat_instructor_form div.participant-name-menu[title="'
-                + group_string + ' ' + gname + '"]')) {
-                    $('#block_quizchat_instructor_form div.participant-name-menu[title="'+ group_string + ' ' + gname + '"]')
-                    .trigger('click');
-                }
-                else {
-                    $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                    checkIfElementExists(
-                    '#block_quizchat_instructor_form div.participant-name-menu[title="'+ group_string + ' ' + gname + '"]');
-                }
+                $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                observeForElement('#block_quizchat_instructor_form li');
             }
         }
     } else {
@@ -428,23 +389,56 @@ const questions_select_change = () => {//onchange_event
 } }
 };
 
-const checkIfElementExists = (element) => {
-    if(element.includes('block_quizchat_instructor_form') && noparticipant_flag) {
-        users_select_change();
-    }
-    let targetElement = document.querySelector(element);
-    if (targetElement) {
-        // The element exists in the DOM
-        $(element).trigger('click');
-        //add_divcontainerquestions();
-        clearTimeout(timeoutid);
-    } else {
-        // The element is not yet rendered
-        // Schedule another check after a delay
-        timeoutid =setTimeout(() => {
-            checkIfElementExists(element);
-        }, 1000); // Check again later
-    }
+const observeForElement = (elementSelector) => {
+    const callback = (mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                let targetElement = document.querySelector(elementSelector);
+                if (targetElement) {
+                    // Element found, perform actions
+                    if (elementSelector.includes('block_quizchat_instructor_form') && noparticipant_flag) {
+                        users_select_change();
+                    }
+                    if(elementSelector.includes('li')) {
+                        if($(elementSelector).closest('ul').css('display') !== 'none') {
+                            // if(elementSelector.includes('block_quizchat_instructor_form li[data-value')) {
+                            //     li_clicked = true;
+                            // }
+                            if($(elementSelector.includes('block_quizchat_instructor_form li[data-value'))) {
+                                li_clicked = true;
+                            }
+                            $(elementSelector).first().attr('aria-selected', 'true');
+                            $(elementSelector).first().trigger('click');
+                            // add_divcontainerquestions();
+                            // Stop observing since the element is found
+                            observer.disconnect();
+                            // if(($('#fitem_id_block_quizchat_users_select span[role="option"]').attr('data-value') == pid)&&
+                            // elementSelector.includes('block_quizchat_instructor_form')) {
+                            //     li_clicked = false;
+                            // }
+                            break;
+                        }
+                    }
+                    else {
+                        $(elementSelector).trigger('click');
+                        // add_divcontainerquestions();
+                        // Stop observing since the element is found
+                        observer.disconnect();
+                        break;
+                    }
+                }
+            }
+        }
+    };
+
+    // Create a new MutationObserver instance
+    const observer = new MutationObserver(callback);
+
+    // Start observing the DOM
+    observer.observe(document.body, {
+        childList: true, // Listen for added/removed child nodes
+        subtree: true    // Observe the entire subtree of the body
+    });
 };
 
 const add_divcontainer_after_question_select = () => {
@@ -529,47 +523,31 @@ const resetMenus_click_respond = (pid, qid, qtxt) => {
             participantid = $('#fitem_id_block_quizchat_users_select span[role="option"]')[0].dataset.value;
             if(questionid == String(qid)) {//the desired question is already selected :)
                 if(participantid != String(pid)) {
-                    // change the participant menu only if the selected participant ! = the desired participant,
-                    // otherwise keep the participant
-                    if($('#block_quizchat_instructor_form li[data-value="'+ pid + '"]').length == 0)
-                    {
-                        $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                        checkIfElementExists(
-                            '#block_quizchat_instructor_form li[data-value="'+ pid + '"]'
-                        );
-                    } else {
-                        $('#block_quizchat_instructor_form li[data-value="'+ pid + '"]').trigger('click');
-                    }
+                    // allow_active_li = true;
+                    $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                    observeForElement('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
                 }
             }
             else {//question selected (not the desired question) and there is selected participant
                 //remove the selected question
                 click_to_respond(qid,qtxt);
-                //todo
-                    if($('#block_quizchat_instructor_form li[data-value="'+ pid + '"]').length == 0)
-                    {
-                        noparticipant_flag = true;
-                        //$('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
-                        checkIfElementExists('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
-                    }
-                    else
-                    {
-                        $('#block_quizchat_instructor_form li[data-value="'+ pid + '"]').trigger('click');
-                    }
+                noparticipant_flag = true;
+                $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                observeForElement('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
             }
         }
         else {//there is selected question but no participant is selected
             if(questionid == String(qid)) {//the desired question is already selected :)
                 //select the desired person in participants
-                checkIfElementExists(
-                    '#block_quizchat_instructor_form li[data-value="'+ pid + '"]'
-                );
+                // allow_active_li = true;
+                $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                observeForElement('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
             }
             else {//a question is selected (not the desired question) and there is no selected participant
                 click_to_respond(qid,qtxt);
-                checkIfElementExists(
-                    '#block_quizchat_instructor_form li[data-value="'+ pid + '"]'
-                );
+                // allow_active_li = true;
+                $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+                observeForElement('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
             }
         }
     } else {//no selected question
@@ -577,15 +555,45 @@ const resetMenus_click_respond = (pid, qid, qtxt) => {
             $('#block_quizchat_instructor_form span[aria-hidden="true"]:contains("× ")').trigger('click');
         }
         click_to_respond(qid,qtxt);
-        checkIfElementExists(
-            '#block_quizchat_instructor_form li[data-value="'+ pid + '"]'
-        );
+        // allow_active_li = true;
+        //$('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+        //observeForElement('#block_quizchat_instructor_form li[data-value="'+ pid + '"]');
+        waitForElement('#fitem_id_block_quizchat_questions_select span[role="option"]', () => {
+            observeSelectedQuestion(qid, pid);
+        });
     }
     if(qid == quizchat_address_everyone &&
      $('#fitem_id_block_quizchat_questions_select span[role="option"]').attr('data-value') != qid){
         add_divcontainer_after_question_select();
     }
     noparticipant_flag = false;
+};
+
+// Utility function to wait for an element to exist in the DOM
+const waitForElement = (selector, callback) => {
+    const element = document.querySelector(selector);
+    if (element) {
+        callback();
+    } else {
+        const observer = new MutationObserver(() => {
+            const element = document.querySelector(selector);
+            if (element) {
+                observer.disconnect();
+                callback();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+};
+
+const observeSelectedQuestion= (qid, pid) => {
+    const targetElement = $('#fitem_id_block_quizchat_questions_select span[role="option"]')[0];
+    // Check if the data-value matches the qid
+    if (targetElement.dataset.value === qid) {
+        // Execute the steps
+        $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').trigger('click');
+        observeForElement('#block_quizchat_instructor_form li[data-value="'+pid+'"]');
+    }
 };
 
 const add_divcontainerquestions = () => {
@@ -673,9 +681,18 @@ const ul_callback = (mutations) => {
         if (mutation.type === 'childList') {
             let attr = $('#block_quizchat_questions_form ul.form-autocomplete-suggestions').attr('aria-hidden');
             if (typeof attr == 'undefined' || attr == false) {
-                 // Menu is visible, trigger deselection of the selected item
-                 $('#block_quizchat_questions_form ul.form-autocomplete-suggestions li[aria-selected="true"]')
-                 .attr('aria-selected', 'false');
+                let chosen_option_span = $('#block_quizchat_questions_form span[role="option"]');
+                if(chosen_option_span.length > 0) {
+                    let active_li = $('#block_quizchat_questions_form ul li[aria-selected="true"]');
+                    if($(active_li).length > 0) {
+                        if(parseInt($(active_li).attr('data-value')) !== parseInt($(chosen_option_span).attr('data-value'))) {
+                            // Menu is visible, trigger deselection of the selected item
+                            $('#block_quizchat_questions_form ul.form-autocomplete-suggestions li[aria-selected="true"]')
+                            .attr('aria-selected', 'false');
+                        }
+                    }
+
+                }
             }
         }
     }
@@ -686,9 +703,24 @@ const ul_callback_p = (mutations) => {
         if (mutation.type === 'childList') {
             let attr = $('#block_quizchat_instructor_form ul.form-autocomplete-suggestions').attr('aria-hidden');
             if (typeof attr == 'undefined' || attr == false) {
-                 // Menu is visible, trigger deselection of the selected item
-                 $('#block_quizchat_instructor_form ul.form-autocomplete-suggestions li[aria-selected="true"]')
-                 .attr('aria-selected', 'false');
+                let chosen_option_span = $('#block_quizchat_instructor_form span[role="option"]');
+                if(chosen_option_span.length > 0) {
+                    let active_li = $('#block_quizchat_instructor_form ul li[aria-selected="true"]');
+                    if($(active_li).length > 0) {
+                        if(parseInt($(active_li).attr('data-value')) !== parseInt($(chosen_option_span).attr('data-value'))
+                        ) {
+                            if(!li_clicked) {
+                                // Menu is visible, trigger deselection of the selected item
+                            $('#block_quizchat_instructor_form ul.form-autocomplete-suggestions li[aria-selected="true"]')
+                            .attr('aria-selected', 'false');
+                            }
+                            else {
+                                li_clicked = false;
+                            }
+                        }
+                    }
+
+                }
             }
         }
     }

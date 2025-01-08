@@ -1,12 +1,23 @@
 # Quizchat Block Plugin
 
-The Quizchat block plugin enhances the quiz experience by enabling real-time communication between instructors and students, who are currently answering the quiz.  It provides a dedicated chat window within the quiz interface, allowing instructors to provide guidance, clarification, and support to students in real-time. It appears as a block in the block drawer. 
-By default only editting teachers and admins are allowed to send messages either to all quiz participants, to a specific participant, or even to themselves whenever needed. 
-Students are allowed to chat only with the instructors. It also comes with built-in support for MathJax, a powerful tool for rendering mathematical equations on web pages, providing users with a rich mathematical experience within the block. The plugin also allows instructors to refer to a question in their messages. In this case, they have the possibility to send one message to all students who got that question and students see clickable links for the refernced question and they can directly navigate to it. Students can also reference either a general or specific question number in their messages. Instructors will receive a clickable question name, enabling them to effortlessly preview the question being referenced before responding. Additionally, Quizchat seamlessly manages shuffled and randomized questions, ensuring that instructors receive the exact question referenced in a clear and organized manner. This feature enhances communication efficiency, enables instructors to address student queries promptly and accurately, facilitates targeted communication and fosters a collaborative learning environment.
-In order to ensure no messages are overlooked and providing a more structured communication flow in Quizchat, instructors have the option to open the block in a new page. The Page view of Quizchat allows instructors to clearly differentiate between private and group conversations to be notified of new messages in real time, clearly see which conversation the new message belongs to, and view messages of each conversation separately for a more focused discussion experience.
+The Quizchat block plugin enhances the quiz experience by enabling real-time communication between instructors and students, who are currently answering the quiz.  It provides a dedicated chat window within the quiz interface, allowing instructors to provide guidance, clarification, and support to students in real-time. 
+
+# Features
+
+- It appears as a block in the block drawer. 
+- By default only editting teachers and admins are allowed to send messages either to all quiz participants, to a specific participant, or even to themselves whenever needed. 
+Students are allowed to chat only with the instructors. It also comes with built-in support for MathJax, a powerful tool for rendering mathematical equations on web pages, providing users with a rich mathematical experience within the block. 
+
+- The plugin also allows instructors to refer a question in their messages. In this case, they have the possibility to send one message to all students who got that question and students see clickable links for the refernced question and they can directly navigate to it. 
+
+- Students can also reference either a general or specific question number in their messages. Instructors will receive a clickable question name, enabling them to effortlessly preview the question being referenced before responding. 
+
+- Additionally, Quizchat seamlessly manages shuffled and randomized questions, ensuring that instructors receive the exact question referenced in a clear and organized manner. This feature enhances communication efficiency, enables instructors to address student queries promptly and accurately, facilitates targeted communication and fosters a collaborative learning environment.
+
+- In order to ensure no messages are overlooked and providing a more structured communication flow in Quizchat, instructors have the option to open the block in a new page. The Page view of Quizchat allows instructors to clearly differentiate between private and group conversations to be notified of new messages in real time, clearly see which conversation the new message belongs to, and view messages of each conversation separately for a more focused discussion experience.
 
 # Compatibility
-This block is compatible with Moodle versions 4.1 to 4.5 and is also compatible with PHP versions 8.0 to 8.2 (please check the respective compatibility for your Moodle version).
+This block is compatible with Moodle versions 4.1 to 4.5 and is also compatible with PHP versions 8.0 to 8.2 (please check the respective compatibility for your Moodle version). Moodle 4.3+ is required for Behat tests, otherwise the Behat scenario 'Recieving messages in students view with refernced question' in 'question_ref.feature' will fail. Since the edit question number feature is only available starting from Moodle version 4.3.
 
 # Notes
 

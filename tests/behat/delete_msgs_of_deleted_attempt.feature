@@ -58,7 +58,8 @@ Feature: Delete messages of deleted attempt
     And I press "Send"
     And I wait until the page is ready
     And I should see "I'd like to ask about question 1."
-    And I should see "Question: 1 - Quiz-attempt: 1"
+    #And I should see "Question: 1 - Quiz-attempt: 1"
+    And "1" "link" should exist
     And I press "Finish attempt"
     And I press "Submit all and finish"
     And I click on "Submit" "button" in the "Submit all your answers and finish?" "dialogue"

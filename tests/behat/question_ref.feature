@@ -27,6 +27,49 @@ Feature: Question reference
     And the following "question categories" exist:
       | contextlevel | reference | name           |
       | Course       | C1        | Test questions |
+      
+  @javascript @repeated_questionref
+  Scenario: Teachers sends a message with reference to the same question twice
+    When the following "questions" exist:
+      | questioncategory | qtype       | name                      | questiontext    |
+      | Test questions   | truefalse   | TF1                       | First question  |
+      | Test questions   | truefalse   | TF2                       | Second question |
+      | Test questions   | truefalse   | TF3                       | Third question  |
+      | Test questions   | truefalse   | TF4                       | Fourth question |
+      | Test questions   | truefalse   | TF5                       | Fifth question  |
+      | Test questions   | random      | Random (Test questions)   | 0               |
+    And quiz "Quiz 1" contains the following questions:
+      | question                | page | requireprevious |
+      | Random (Test questions) | 1    | 0               |
+      | TF1                     | 1    | 1               |
+    And user "student1" has started an attempt at quiz "Quiz 1" randomised as follows:
+      | slot | actualquestion | response |
+      |   1  | TF5            | False    |
+      |   2  | TF1            | False    |
+    And I am on the "Quiz 1" "mod_quiz > View" page logged in as "teacher1"
+    And I wait until the page is ready
+    And I open the autocomplete suggestions list
+    And I wait for 1 seconds
+    And I click on "TF5" item in the autocomplete list
+    And I wait for 1 seconds
+    And I set the field "block_quizchat_input_instructor_send" to "TF5 specific question to TF5 group from teacher1."
+    And I press "Send"
+    And I wait until the page is ready
+    And I should see "TF5 specific question to TF5 group from teacher1."
+    And I should see "Question: TF5"
+    ##############################
+    ### Repeat all these steps ###
+    ##############################
+    And I open the autocomplete suggestions list
+    And I wait for 1 seconds
+    And I click on "TF5" item in the autocomplete list
+    And I wait for 1 seconds
+    And I set the field "block_quizchat_input_instructor_send" to "Second TF5 specific question to TF5 group from teacher1."
+    And I press "Send"
+    And I wait until the page is ready
+    And I should see "Second TF5 specific question to TF5 group from teacher1."
+    And I should see "Question: TF5"
+    
   @javascript
   Scenario: student sends and teacher receives message with random question reference
     When the following "questions" exist:
@@ -55,7 +98,8 @@ Feature: Question reference
     And I press "Send"
     And I wait until the page is ready
     And I should see "I'd like to ask about question 1."
-    And I should see "Question: 1 - Quiz-attempt: 1"
+    #And I should see "Question: 1 - Quiz-attempt: 1"
+    And "1" "link" should exist
     And I log out
     And I close all opened windows
     And I log in as "teacher1"
@@ -98,7 +142,8 @@ Feature: Question reference
     And I press "Send"
     And I wait until the page is ready
     And I should see "I'd like to ask about question 2."
-    And I should see "Question: 2 - Quiz-attempt: 1"
+    #And I should see "Question: 2 - Quiz-attempt: 1"
+    And "2" "link" should exist
     And I log out
     And I close all opened windows
     And I log in as "teacher1"
@@ -184,7 +229,9 @@ Feature: Question reference
     And I press "Send"
     And I wait until the page is ready
     And I should see "I'd like to ask about question 2."
-    And I should see "Question: 2 - Quiz-attempt: 1"
+    #And I should see "Question: 2 - Quiz-attempt: 1"
+    And "2" "link" should exist
+    And I should see "- Quiz-attempt: 1"
     And user "student1" has started an attempt at quiz "Quiz 1"
     And user "student1" has started an attempt at quiz "Quiz 1" with layout "5,0,3,0,1,0,2,0,4,0"
     And user "student1" has finished an attempt at quiz "Quiz 1"
@@ -197,7 +244,9 @@ Feature: Question reference
     And I press "Send"
     And I wait until the page is ready
     And I should see "I'd like to ask about question 2."
-    And I should see "Question: 2 - Quiz-attempt: 2"
+    #And I should see "Question: 2 - Quiz-attempt: 2"
+    And "2" "link" should exist
+    And I should see "- Quiz-attempt: 2"
     And I log out
     And I close all opened windows
     And I log in as "teacher1"
@@ -220,9 +269,9 @@ Feature: Question reference
     | Test questions   | truefalse   | TF5                       | Fifth question  |
     | Test questions   | random      | Random (Test questions)   | 0               |
   And quiz "Quiz 1" contains the following questions:
-    | question                | page | requireprevious |
-    | Random (Test questions) | 1    | 0               |
-    | TF1                     | 2    | 1               |
+    | question                | page | requireprevious | displaynumber |
+    | Random (Test questions) | 1    | 0               | 1.a           |
+    | TF1                     | 2    | 1               | 1.b           |
   And user "student1" has started an attempt at quiz "Quiz 1" randomised as follows:
     | slot | actualquestion | response |
     |   1  | TF5            | False    |
@@ -234,7 +283,7 @@ Feature: Question reference
   And I press "Continue your attempt"
   And I should see "Additional info for q2." in the ".block_quizchat_msg_area_body" "css_element"
   And I should see "Fifth question"
-  And "2" "link" should exist in the ".block_quizchat_msg_area_body" "css_element"
-  And I click on "2" "link" in the ".block_quizchat_msg_area_body" "css_element"
+  And "1.b" "link" should exist in the ".block_quizchat_msg_area_body" "css_element"
+  And I click on "1.b" "link" in the ".block_quizchat_msg_area_body" "css_element"
   And I wait until the page is ready
   Then I should see "First question"

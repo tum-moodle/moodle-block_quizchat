@@ -214,8 +214,10 @@ export const init_student = (arg_quizchat, confingsetting_msglen, reqmsg, receiv
         setFormIfExist();
         write_sessionStorage('selected_user_or_question_id', "-2");
         let targetnode = $('#block_quizchat_questions_form');
-        let ul_config = {childList: true, subtree: true};
-        let ul_observer = new MutationObserver(ul_callback);
-        ul_observer.observe(targetnode[0], ul_config);
+        if(typeof targetnode[0] !== 'undefined') {
+            let ul_config = {childList: true, subtree: true};
+            let ul_observer = new MutationObserver(ul_callback);
+            ul_observer.observe(targetnode[0], ul_config);
+        }
     });
 };

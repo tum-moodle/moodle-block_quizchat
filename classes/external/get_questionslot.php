@@ -52,7 +52,7 @@ class get_questionslot extends \external_api {
                 'questionid' => new \external_value(PARAM_INT, 'Question id'),
                 'teacherslotorder' => new \external_value(PARAM_INT, 'The slot order of a question in a quiz as added by teacher'),
                 'questionsummary' => new \external_value(PARAM_RAW, 'Question summary'),
-                'studentquestionorder' => new \external_value(PARAM_INT, 'student question order'),
+                'studentquestionorder' => new \external_value(PARAM_RAW, 'student question order'),
                 'questionlink' => new \external_value(PARAM_RAW, 'Question preview link'),
                 'questionattemptid' => new \external_value(PARAM_INT, 'Question attempt id'),
                 'questionname' => new \external_value(PARAM_RAW, 'Question name'),

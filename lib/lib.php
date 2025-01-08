@@ -533,14 +533,33 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
                 $qzatt_id = get_quizattid_by_quesattid($record->questionattemptid);
                 //get slot url
                 $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
-                $can_nav = $attemptobj->can_navigate_to(intVal($info['slotorder']));
+                // get all slots from the attempt object
+                $slots = $attemptobj->get_slots();
+                $slot = null;
+                $questionnumber = null;
+
+                // build a mapping of questionattemptid to slot and questionnumber
+                $questionattempt_map = [];
+                foreach ($slots as $current_slot) {
+                    $question_attempt = $attemptobj->get_question_attempt($current_slot);
+                    $questionattempt_map[$question_attempt->get_database_id()] = [
+                        'slot' => $current_slot,
+                        'questionnumber' => $attemptobj->get_question_number($current_slot)
+                    ];
+                }
+
+                // retrieve the slot and questionnumber for the desired questionattemptid
+                if (isset($questionattempt_map[$record->questionattemptid])) {
+                    $slot = $questionattempt_map[$record->questionattemptid]['slot'];
+                    $questionnumber = $questionattempt_map[$record->questionattemptid]['questionnumber'];
+                }
+                $can_nav = $attemptobj->can_navigate_to(intVal($slot));
                 if($can_nav) {
-                    $slot_url = $attemptobj->attempt_url(intVal($info['slotorder']));
+                    $slot_url = $attemptobj->attempt_url(intVal($slot));
                     $slot_url_str = $slot_url->out(false);
-                    $slot_order = $info['slotorder'];
-                    $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$slot_order</a>";
+                    $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$questionnumber </a>";
                 } else {
-                    $questioninfo = $info['slotorder'];
+                    $questioninfo = $questionnumber ;
                 }
             }
         }
@@ -560,15 +579,37 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
             $info = get_questioninfo($questionatt_id, $hascap, $quizchat->id, $question_info_user, $langstr_attempt, $langstr_general);
             $slotorder_str = $info['slotorder'];
             $quizattemptnr = $info['quizattemptnr'];
-            //get slot url
+            // get slot url
             $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
-            $can_nav = $attemptobj->can_navigate_to(intVal($slotorder_str));
-            if($can_nav) {
-                $slot_url = $attemptobj->attempt_url(intVal($slotorder_str));
-                $slot_url_str = $slot_url->out(false);
-                $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$slotorder_str</a>";
+            // get all slots from the attempt object
+            $slots = $attemptobj->get_slots();
+            $slot = null;
+            $questionnumber = null;
+
+            // build a mapping of questionattemptid to slot and questionnumber
+            $questionattempt_map = [];
+            foreach ($slots as $current_slot) {
+                $question_attempt = $attemptobj->get_question_attempt($current_slot);
+                $questionattempt_map[$question_attempt->get_database_id()] = [
+                    'slot' => $current_slot,
+                    'questionnumber' => $attemptobj->get_question_number($current_slot)
+                ];
+            }
+
+            // retrieve the slot and questionnumber for the desired questionattemptid
+            if (isset($questionattempt_map[$questionatt_id])) {
+                $slot = $questionattempt_map[$questionatt_id]['slot'];
+                $questionnumber = $questionattempt_map[$questionatt_id]['questionnumber'];
+            }
+
+            // handle navigation and display the question info
+            $can_nav = $attemptobj->can_navigate_to(intval($slot)); // check navigation permissions
+            if ($can_nav) {
+                $slot_url = $attemptobj->attempt_url(intval($slot)); // get slot URL
+                $slot_url_str = $slot_url->out(false); // get URL string
+                $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'>{$questionnumber}</a>";
             } else {
-                $questioninfo = $slotorder_str;
+                $questioninfo = $questionnumber;
             }
         }
         //date
@@ -881,7 +922,7 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
             'questionid'            => QUIZCHAT_GENERAL_QUESTION_ID,
             'teacherslotorder'      => 0,
             'questionsummary'           => $generalstring,
-            'studentquestionorder'  => 0,
+            'studentquestionorder'  => '0',
             'questionlink' => $generalstring,
             'questionattemptid' => 0,
             'questionname' => $generalstring
@@ -923,10 +964,32 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                 $slotNumbers = array_filter($slotNumbers, function($value) {
                     return $value !== '0';
                 });
-                // Initialize student order
-                $studentOrder = 0;
                 // Check if slot numbers are available
                 if (!empty($slotNumbers)) {
+                    require_once($CFG->dirroot.'/mod/quiz/lib.php');
+                    // get slot url
+                    $attemptobj = quiz_create_attempt_handling_errors(intVal($qzattempt->id), intVal(($quizchat->cmid)));
+                    // get all slots from the attempt object
+                    $slots = $attemptobj->get_slots();
+                    $slot = null;
+                    $questionnumber = null;
+
+                    // build a mapping of questionattemptid to slot and questionnumber
+                    $questionattempt_map = [];
+                    foreach ($slots as $current_slot) {
+                        $question_attempt = $attemptobj->get_question_attempt($current_slot);
+                        $questionattempt_map[$question_attempt->get_database_id()] = [
+                            'slot' => $current_slot,
+                            'questionnumber' => $attemptobj->get_question_number($current_slot)
+                        ];
+                    }
+
+                    
+
+
+
+
+
                     // get the slot numbers with their order
                     foreach ($slotNumbers as $slotNumber) {
                         //get question id to each slot number
@@ -937,6 +1000,11 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                         $questiondata = $DB->get_records_sql($questionquery);
                         if (!empty($questiondata)) {
                             foreach($questiondata as $id => $question){
+                                // retrieve the slot and questionnumber for the desired questionattemptid
+                                if (isset($questionattempt_map[$question->questionattemptid])) {
+                                    $slot = $questionattempt_map[$question->questionattemptid]['slot'];
+                                    $questionnumber = $questionattempt_map[$question->questionattemptid]['questionnumber'];
+                                }
                                 if (strcmp($question->questiontype,"informationitem") != 0) { //if not description type
                                     //Hide questions data in student view, that is sent in get_questionslot service.
                                     //Only studentquestionorder and questionattemptid are sent
@@ -957,12 +1025,12 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                                     }
                                     if($searchtext!=="") {
                                         $searchtext = strtolower($searchtext);
-                                        if (($searchtext === strval($studentOrder + 1)) && !$hascap) {//if student search by student question order
+                                        if (($searchtext === $questionnumber) && !$hascap) {//if student search by student question order
                                             array_push($questions['questions'], [
                                                 'questionid'            => $qid,
                                                 'teacherslotorder'      => $teacherorder,
                                                 'questionsummary'           => $summary,
-                                                'studentquestionorder'  => strval($studentOrder + 1),
+                                                'studentquestionorder'  => $questionnumber,//strval($studentOrder + 1),
                                                 'questionlink' => $questionpreviewlink,
                                                 'questionattemptid' => $question->questionattemptid,
                                                 'questionname' => $q_name
@@ -979,7 +1047,7 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                                                     'questionid' => $qid,
                                                     'teacherslotorder' => $teacherorder,
                                                     'questionsummary' => $summary,
-                                                    'studentquestionorder' => strval($studentOrder + 1),
+                                                    'studentquestionorder' => $questionnumber,
                                                     'questionlink' => $questionpreviewlink,
                                                     'questionattemptid' => $question->questionattemptid,
                                                     'questionname' => $q_name
@@ -997,7 +1065,7 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                                                 'questionid' => $qid,
                                                 'teacherslotorder' => $teacherorder,
                                                 'questionsummary' => $summary,
-                                                'studentquestionorder' => strval($studentOrder + 1),
+                                                'studentquestionorder' => $questionnumber,
                                                 'questionlink' => $questionpreviewlink,
                                                 'questionattemptid' => $question->questionattemptid,
                                                 'questionname' => $q_name
@@ -1005,14 +1073,9 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
                                         }
                                     }
                                 }
-                                else {// if descriptiontype question
-                                    $studentOrder--;
-                                }
                                 
                             }
                         }
-                        // Increment student order
-                        $studentOrder++;
                     }
                 }
             }
