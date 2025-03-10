@@ -166,8 +166,7 @@ Feature: Question reference
     And I switch to the main window
     And I log out
     And I close all opened windows
-    And I log in as "student1"
-    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I am on the "Quiz 1" "mod_quiz > View" page logged in as "student1"
     And user "student1" has started an attempt at quiz "Quiz 1"
     And I should see "Hi S1!"
   @javascript

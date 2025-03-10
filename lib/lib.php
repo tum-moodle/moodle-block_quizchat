@@ -156,161 +156,94 @@ function check_sendallcap($quizchat, $userid = null)
  }
 
 /**
- * Returns array  of users data including 'id','firstname','lastname','fullname','profileimageurlsmall','state' from users table for specific userids in a quiz.
+ * Returns array  of users data including 'id','firstname','lastname','fullname','state','questionid','questionname'.
  * If the fetched user is enrolled in the given quizid, the 'state' field is the user most recent attempt state in that quiz from quiz_attempts table.
- * It returns 'abandoned','inprogress','noattempt','finished'.
- * If the fetched user is not anymore enrolled in the given quizid(previously was enrolled and has Msgs in the given quizid),
- * the 'state' field states whether the fetched user is 'suspended', 'deleted', or just 'unenrolled'.
- * The fuction will return '' as value for 'profileimageurlsmall', if the user profile picture is not needed.
- * @param array $users array of users ids to be fetched, or empty array if it is required to return all enrolled users data in the given quizid.
  * @param int $quizid quiz id.
- * @param bool $queryByName bool to check whether user query is by id (msg header) or (partial) name (menu)
- * @param string $searchText text to search for in the enrolled users and match it with user firstname or last name in user table.
+ * @param string $searchText text to search for in the enrolled users and match it with user fullname.
  * @param int $questionid the selected question id.
  * @param string $general_txt language string general
- * @return array array of user details:'id','firstname','lastname','fullname','profileimageurlsmall','state'.
+ * @return array array of user details:'id','firstname','lastname','fullname','state','questionid','questionname'.
  */
- function get_usersdata($users, $quizid, $queryByName, $searchText, $questionid, $general_txt)
+ function get_usersdata($quizid, $searchText, $questionid, $general_txt)
  {
-    $users_infos = [];
-    if(!is_null($quizid)) {
-        global $DB;
-
-        ////Get enrolled users in quiz/course
-        // Get course id from quizid and then get coursecontext to get enrolled users in that context
-        $quiz = $DB->get_record('quiz', array('id' => $quizid));
-        //get enrolled users in a course
-        $enrolled = get_enrolled_users_in_course($quiz->course);
-        $enrolledids = array_column($enrolled, 'id');
-
-        //participants in case of Msg-header are chat-participants(userIds)
-        //participants in case of Participants-Menu are enrolled users(enrolledids)
-        if ($queryByName) // Participants-Menu
-        {
-            // Compare lower case search names for lack of
-            // 'utf8mb4_unicode_ci' collation in postgresql
-            $searchText = strtolower($searchText);
-            $fetchedids = $enrolledids;
-        }
-        else //Msg-header case
-        {
-            // Remove null or duplicate values from the array
-            $userIds = array_filter($users, function ($id) {
-                return !is_null($id) && $id !== '';
-            });
-            //$userIds = array_values(array_column($userIds, null, 'id'));
-            $userIds = array_unique($userIds);
-            $fetchedids = $userIds;
-        }
-
-        if (0 < $fetchedids && $enrolledids) {
-            //get user infos by id
-            $participants = $DB->get_records_sql("
-                SELECT id, firstname, lastname, fullname, picture, deleted, suspended FROM
-                (
-                    SELECT  id, firstname, lastname, picture, deleted, suspended,
-                    CONCAT(lastname, ' ', firstname) AS fullname, CONCAT(firstname, ' ', lastname) AS fullnameRvs
-                    FROM {user}
-                    WHERE id IN (" . implode(',', $fetchedids) . ")
-                ) as preselection
-                WHERE LOWER(fullname) LIKE '%{$searchText}%' OR  LOWER(fullnameRvs) LIKE '%{$searchText}%'
-                ORDER BY fullname ASC;
-            ");
-
-            foreach ($participants as $participant) {
-                $filtereduser = [];
-                //if get image isn't needed, this function called for participants-menu,
-                //the input user array doesn't contain unenrolled or deleted users. All users are enrolled.
-                // Get the state of the most recent attempt from the quiz_attempts table
-                $attemptstate = get_user_state_inquiz($participant->id, $quizid);
-                //then the input user array may contain unenrolled or deleted users
-                //user pic
-                $imgurl = get_user_pic_url($participant->id);
-                //if chat-participant is enrolled in quiz/course
-                if (in_array($participant->id, $enrolledids)) {
-                    // Get the state of the most recent attempt from the quiz_attempts table
-                    $attemptstate = get_user_state_inquiz($participant->id, $quizid);
-                } else {
-                    //unenrolled chat-participant
-                    $attemptstate = 'unenrolled';
-                }
-                if ($participant->suspended == '1') {
-                    $attemptstate = 'suspended';
-                }
-                // deleted / suspended user (suspended user can still be enrolled)
-                if($participant->deleted == '1') {
-                    $attemptstate = 'deleted';
-                }
-                if (!empty($participant)) {
-                    $quizchat = $DB->get_record('block_quizchat', array('quiz' => $quizid));
-                    if($questionid != QUIZCHAT_GENERAL_QUESTION_ID) {//filter participants menu with question id
-                        if(!check_sendallcap($quizchat, $participant->id )) {
-                            $participant_question_query = "SELECT qa.*, ques_a.questionid, q.name as questionname, ques_a.slot
-                                FROM {quiz_attempts} qa
-                                JOIN {question_attempts} ques_a
-                                ON qa.uniqueid = ques_a.questionusageid
-                                JOIN {question} q
-                                ON q.id = ques_a.questionid
-                                WHERE qa.quiz = ".$quizid."
-                                AND qa.timestart = (
-                                    SELECT MAX(qa_max.timestart)
-                                    FROM {quiz_attempts} qa_max
-                                    WHERE qa_max.quiz = qa.quiz
-                                    AND qa_max.userid = qa.userid
-                                )
-                                AND ques_a.questionid = ".$questionid.";"; 
-                            $participants_question = $DB->get_records_sql($participant_question_query);
-                            // Extract the userid values into a separate array
-                            $userIds = array_column($participants_question, 'userid');
-
-                            // Check if $participant->id exists in $userIds
-                            if (in_array($participant->id, $userIds)) {
-                                $filtereduser = [
-                                    'id' => $participant->id,
-                                    'firstname' => $participant->firstname,
-                                    'lastname' => $participant->lastname,
-                                    'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
-                                    'profileimageurlsmall'=> $imgurl,
-                                    'state' => $attemptstate,
-                                    'questionname' => get_question_name_by_id($questionid),
-                                    'questionid' => $questionid
-                                ];
-                                array_push($users_infos, $filtereduser);
-                            }
-                        }
-                        else {
-                                $filtereduser = [
-                                    'id' => $participant->id,
-                                    'firstname' => $participant->firstname,
-                                    'lastname' => $participant->lastname,
-                                    'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
-                                    'profileimageurlsmall'=> $imgurl,
-                                    'state' => $attemptstate,
-                                    'questionname' => get_question_name_by_id($questionid),
-                                    'questionid' => $questionid
-                                ];
-                                array_push($users_infos, $filtereduser);
-
-                        }
-                    }
-                    else {
-                        $filtereduser = [
-                            'id' => $participant->id,
-                            'firstname' => $participant->firstname,
-                            'lastname' => $participant->lastname,
-                            'fullname' => $participant -> lastname . ', ' . $participant -> firstname,
-                            'profileimageurlsmall'=> $imgurl,
-                            'state' => $attemptstate,
-                            'questionname' => $general_txt,//get_string('student_question_general', 'block_quizchat'),
-                            'questionid' => $questionid
-                        ];
-                        array_push($users_infos, $filtereduser);
-                    }
-                }
-            }
-        }
+    $participants_query = "";
+    $searchText = strtolower($searchText);
+    global $DB;
+    if($questionid != QUIZCHAT_GENERAL_QUESTION_ID) {
+        //filter participants menu with question id
+        $participants_query = "SELECT * FROM (
+            SELECT qa.userid as id,
+                    u.firstname,
+                    u.lastname,
+                    CONCAT(u.lastname, ' ', u.firstname) AS fullname,
+                    CASE
+                        WHEN u.deleted = 1 THEN 'deleted' 
+                        WHEN u.suspended = 1 THEN 'suspended'
+                        ELSE qa.state
+                    END AS state, ques_a.questionid, q.name as questionname
+            FROM {quiz_attempts} qa
+            JOIN {question_attempts} ques_a
+            ON qa.uniqueid = ques_a.questionusageid
+            JOIN {question} q
+            ON q.id = ques_a.questionid
+            JOIN {user} u 
+            ON qa.userid = u.id
+            WHERE qa.quiz = ".$quizid."
+            AND qa.timestart = (
+                SELECT MAX(qa_max.timestart)
+                FROM {quiz_attempts} qa_max
+                WHERE qa_max.quiz = qa.quiz
+                AND qa_max.userid = qa.userid
+                )
+            AND ques_a.questionid = ".$questionid.") as users_question_attempts
+            WHERE LOWER(users_question_attempts.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
+            ORDER BY users_question_attempts.fullname ASC;";
     }
-    return $users_infos;
+    else{
+        //get all quiz participants even the ones who have no attempts
+        $quizchat = $DB->get_record('block_quizchat', array('quiz' => $quizid));
+        $coursecontext = \context_course::instance($quizchat->course);
+        $participants_query = "SELECT DISTINCT * FROM (
+            SELECT
+                u.id AS id,
+                u.firstname,
+                u.lastname,
+                CONCAT(u.lastname, ' ', u.firstname) AS fullname,
+                CASE
+                    WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
+                    WHEN u.deleted = 1 THEN 'deleted' 
+                    WHEN u.suspended = 1 THEN 'suspended'
+                    ELSE COALESCE(qzatt.state, 'noattempt')
+                END AS state,
+                ".QUIZCHAT_GENERAL_QUESTION_ID." as questionid, '".$general_txt."' as questionname
+            FROM
+                {user_enrolments} ue
+            JOIN
+                {enrol} e ON ue.enrolid = e.id
+            JOIN
+                {user} u ON ue.userid = u.id
+            LEFT JOIN {role_assignments} ra 
+                ON u.id = ra.userid AND ra.contextid = ".$coursecontext->id."
+            LEFT JOIN (
+                SELECT qa.*
+                FROM {quiz_attempts} qa
+                JOIN (
+                    SELECT userid, MAX(timestart) AS last_attempt_time
+                    FROM {quiz_attempts}
+                    WHERE quiz = ".$quizid."
+                    GROUP BY userid
+                ) AS latest_attempt 
+                ON qa.userid = latest_attempt.userid 
+                AND qa.timestart = latest_attempt.last_attempt_time
+            ) AS qzatt ON qzatt.userid = u.id
+            WHERE
+                e.courseid = ".$quizchat->course."
+        ) AS enrolled
+        WHERE LOWER(enrolled.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
+        ORDER BY enrolled.fullname ASC;";
+    }
+    $participants = $DB->get_records_sql($participants_query);
+    return $participants;
  }
 
  /**
@@ -395,6 +328,7 @@ function get_quizattid_by_quesattid ($questionattemptid) {
  function get_msgs($quizchatid,$most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull) {
     global $DB, $USER, $CFG;
     require_once($CFG->dirroot.'/mod/quiz/lib.php');
+    require_once($CFG->dirroot . '/mod/quiz/locallib.php');
     $grp_langstr = $langstr_group;
     $msgStruct = [
         "stats" => [
@@ -525,92 +459,66 @@ if ($enableblock && (($attempts && !$hascap)|| $hascap)) {
         $questionid = 0;
         if($hascap) {$question_info_user = $record->userid;}
         if(!is_null($record->questionattemptid)) {
-            $info = get_questioninfo($record->questionattemptid, $hascap, $quizchat->id, $question_info_user, $langstr_attempt, $langstr_general);
-            $questioninfo = $info['slotorder'];
-            $quizattemptnr = $info['quizattemptnr'];
-            if($hascap) {$questionid = $info['questionid'];}
-            else {
-                $qzatt_id = get_quizattid_by_quesattid($record->questionattemptid);
-                //get slot url
-                $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
-                // get all slots from the attempt object
-                $slots = $attemptobj->get_slots();
-                $slot = null;
-                $questionnumber = null;
-
-                // build a mapping of questionattemptid to slot and questionnumber
-                $questionattempt_map = [];
-                foreach ($slots as $current_slot) {
-                    $question_attempt = $attemptobj->get_question_attempt($current_slot);
-                    $questionattempt_map[$question_attempt->get_database_id()] = [
-                        'slot' => $current_slot,
-                        'questionnumber' => $attemptobj->get_question_number($current_slot)
-                    ];
-                }
-
-                // retrieve the slot and questionnumber for the desired questionattemptid
-                if (isset($questionattempt_map[$record->questionattemptid])) {
-                    $slot = $questionattempt_map[$record->questionattemptid]['slot'];
-                    $questionnumber = $questionattempt_map[$record->questionattemptid]['questionnumber'];
-                }
-                $can_nav = $attemptobj->can_navigate_to(intVal($slot));
-                if($can_nav) {
-                    $slot_url = $attemptobj->attempt_url(intVal($slot));
-                    $slot_url_str = $slot_url->out(false);
-                    $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'\">$questionnumber </a>";
-                } else {
-                    $questioninfo = $questionnumber ;
-                }
+            $quizattemptquery = "SELECT qz_a.id as quizattemptid, qz_a.uniqueid, qa.questionid, qz_a.userid, qa.slot
+                                FROM {question_attempts} as qa
+                                JOIN {quiz_attempts} as qz_a
+                                ON qz_a.uniqueid = qa.questionusageid
+                                WHERE qa.id = ".$record->questionattemptid;
+            $quizattemptrecord = $DB->get_record_sql($quizattemptquery);
+            $attemptobj = quiz_create_attempt_handling_errors(intVal($quizattemptrecord->quizattemptid), intVal(($quizchat->cmid)));
+            $question_attempt_obj = $attemptobj->get_question_attempt(intVal($quizattemptrecord->slot));
+            if($hascap) {
+                $q_name = $question_attempt_obj->get_question()->name;
+                $q_url = new \moodle_url('/question/bank/previewquestion/preview.php', ['cmid' => $quizchat->cmid, 'id' => $quizattemptrecord->questionid]);
+                $questioninfo = "<a href=\"{$q_url->out(false)}\" id='questionref_link_{$quizattemptrecord->questionid}' class='questionref' onclick=\"window.open('{$q_url->out(false)}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
+                $quizattemptnr = ' - ' . $langstr_attempt . ' ' . $attemptobj->get_attempt_number();
+                $questionid = intVal($quizattemptrecord->questionid);
+            } else {
+                $questioninfo = ($attemptobj->can_navigate_to(intval($quizattemptrecord->slot))? "<a href=\"{$attemptobj->attempt_url(intval($quizattemptrecord->slot))->out(false)}\" class='questionref'>{$attemptobj->get_question_number(intVal($quizattemptrecord->slot))}</a>" : $attemptobj->get_question_number(intVal($quizattemptrecord->slot)));
+                $quizattemptnr = ' - ' . $langstr_attempt . ' ' . $attemptobj->get_attempt_number();
             }
         }
-        if(!is_null($record->questionid)&&$hascap) {
+        if(!is_null($record->questionid) && $hascap) {
             $q_name = get_question_name_by_id($record->questionid);
-            $questionid = $record->questionid;
+            $questionid = intVal($record->questionid);
             //question link
             $questionpreviewurl = new \moodle_url('/question/bank/previewquestion/preview.php', ['cmid' => $quizchat->cmid, 'id' => $record->questionid]);
             $questionpreviewlink = $questionpreviewurl->out(false);
             $questioninfo = "<a href=\"{$questionpreviewlink}\" id='questionref_link_{$questionid}' class='questionref' onclick=\"window.open('{$questionpreviewlink}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
             
         }
-        if(!is_null($record->questionid)&&!$hascap) {
+        if(!is_null($record->questionid) && !$hascap) {
             $question_info_user = $USER->id;
             $qzatt_id= get_last_inprogress_quizattempt_id($USER->id,$quizchat->quiz);
-            $questionatt_id = get_questionattemptid_in_quizattempt($record->questionid, $qzatt_id);
-            $info = get_questioninfo($questionatt_id, $hascap, $quizchat->id, $question_info_user, $langstr_attempt, $langstr_general);
-            $slotorder_str = $info['slotorder'];
-            $quizattemptnr = $info['quizattemptnr'];
-            // get slot url
+            $questionatt_id = get_questionattemptid_in_quizattempt($record->questionid, $qzatt_id);//not used
             $attemptobj = quiz_create_attempt_handling_errors(intVal($qzatt_id), intVal(($quizchat->cmid)));
-            // get all slots from the attempt object
+            $lastattemptquery = "SELECT *
+                    FROM {quiz_attempts}
+                    WHERE userid = ".$question_info_user."
+                    AND quiz = ".$quizchat->quiz."
+                    ORDER BY timestart DESC
+                    LIMIT 1";
+            $qzattempt = $DB->get_record_sql($lastattemptquery);
+            $qubaid = intVal($qzattempt->uniqueid);
+            $quba = \question_engine::load_questions_usage_by_activity($qubaid);
             $slots = $attemptobj->get_slots();
-            $slot = null;
-            $questionnumber = null;
-
-            // build a mapping of questionattemptid to slot and questionnumber
-            $questionattempt_map = [];
-            foreach ($slots as $current_slot) {
-                $question_attempt = $attemptobj->get_question_attempt($current_slot);
-                $questionattempt_map[$question_attempt->get_database_id()] = [
-                    'slot' => $current_slot,
-                    'questionnumber' => $attemptobj->get_question_number($current_slot)
-                ];
-            }
-
-            // retrieve the slot and questionnumber for the desired questionattemptid
-            if (isset($questionattempt_map[$questionatt_id])) {
-                $slot = $questionattempt_map[$questionatt_id]['slot'];
-                $questionnumber = $questionattempt_map[$questionatt_id]['questionnumber'];
-            }
-
-            // handle navigation and display the question info
-            $can_nav = $attemptobj->can_navigate_to(intval($slot)); // check navigation permissions
-            if ($can_nav) {
-                $slot_url = $attemptobj->attempt_url(intval($slot)); // get slot URL
-                $slot_url_str = $slot_url->out(false); // get URL string
-                $questioninfo = "<a href=\"{$slot_url_str}\" class='questionref'>{$questionnumber}</a>";
-            } else {
-                $questioninfo = $questionnumber;
-            }
+            // Use ReflectionClass to access protected 'questionattempts'  
+            $rc = new ReflectionClass($quba);
+            $prop = $rc->getProperty('questionattempts');
+            $prop->setAccessible(true);
+            $byreflection_quesattempts = $prop->getValue($quba);
+            $q = array_values(array_map(
+                fn($attempt) => [
+                    'slot' => intVal($attempt->get_slot()),
+                    'number' => $attemptobj->get_question_number(intVal($attempt->get_slot())), 
+                    'link' => ($attemptobj->can_navigate_to(intval($attempt->get_slot()))? "<a href=\"{$attemptobj->attempt_url(intval($attempt->get_slot()))->out(false)}\" class='questionref'>{$attemptobj->get_question_number(intVal($attempt->get_slot()))}</a>" : $attemptobj->get_question_number(intVal($attempt->get_slot()))),
+                    'questionattemptid' => intVal($attempt->get_database_id())
+                ],
+                array_filter($byreflection_quesattempts, fn($attempt) => $attemptobj->get_question_type_name(intVal($attempt->get_slot())) !== 'description' && intVal($attempt->get_question_id()) == intVal($record->questionid))
+            ));
+            $questioninfo = $q[0]['link'];
+            $quizattemptnr = ' ';
+            $questionid = intVal($record->questionid);
         }
         //date
         $timestamp_parts = explode(',', userdate($record->timestamp, $langstr_strftimerecentfull));
@@ -899,24 +807,18 @@ function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questiona
  * @param int $quizchatid quizchat id
  * @param string $searchtext text to search for in questions menu.
  * @param string $generalstring language string general
- * @param int $quizattemptid quizattempt id if exists(it should exist in case function call to get msgs from get_questioninfo function)
  * @return array question data: questionid, teacherslotorder, questionsummary and studentquestionorder
  */
-function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $quizattemptid = null)
+function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring)
 {
    $questioninfo = [];
    $questions = ["questions" => []];
    global $DB, $USER, $CFG;
    require_once($CFG->dirroot . '/mod/quiz/locallib.php');
    $quizchat = $DB->get_record('block_quizchat', array('id' => $quizchatid));
-   //$generalstring = get_string('student_question_general', 'block_quizchat');
    //check sendall capability of the current user
-   $hascap=check_sendallcap($quizchat);
+   $hascap = check_sendallcap($quizchat);
    //if the caller function is execute (question menu in student view is the caller), hide teacherslotorder - questionsummary - questionlink - questionattemptid.
-   //otherwise show them
-   $backtrace = debug_backtrace();
-   $caller = $backtrace[2]['function'];
-   $caller2 = $backtrace[1]['function'];//get_msgs
    if($searchtext ==="" || str_contains(strtolower($generalstring), strtolower($searchtext))) {
            array_push($questions['questions'], [
             'questionid'            => QUIZCHAT_GENERAL_QUESTION_ID,
@@ -928,261 +830,74 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring, $qui
             'questionname' => $generalstring
         ]);
     }
-        $quizcontextid = $quizchat ->parentcontextid;
-        $quizid = $quizchat ->quiz;
-        //get the last attempt of the sender id in the specified quiz - in case question menu
+    $quizcontextid = $quizchat ->parentcontextid;
+    $quizid = $quizchat ->quiz;
+    if($hascap) {// Questions menu teacher case
+        $txt = strtolower($searchtext);
+        $questions_per_quiz_query = "SELECT DISTINCT qa.questionid AS id, q.name, q.questiontext
+            FROM {question_attempts} AS qa
+            JOIN {quiz_attempts} AS qza 
+            ON qa.questionusageid = qza.uniqueid
+            JOIN {question} AS q
+            ON q.id = qa.questionid
+            WHERE qza.quiz = ".$quizid." 
+            AND qza.state = '".quiz_attempt::IN_PROGRESS
+            ."' AND qza.timestart = (
+                                SELECT MAX(qa_max.timestart)
+                                FROM {quiz_attempts} qa_max
+                                WHERE qa_max.quiz = qza.quiz
+                                AND qa_max.userid = qza.userid
+                            )
+            AND qa.behaviour <> 'informationitem'
+            AND LOWER(q.name) LIKE '%{$txt}%'
+            ORDER BY q.name;";
+        $questions_per_quiz = $DB->get_records_sql($questions_per_quiz_query);
+        $real_questions = array_values(array_map(fn($q) => [
+            'questionid' => (int)$q->id,
+            'teacherslotorder' => -2,
+            'questionsummary' => $q->questiontext,
+            'studentquestionorder' => -2,
+            'questionlink' => "-",
+            'questionattemptid' => 0,
+            'questionname' => $q->name
+        ], $questions_per_quiz));
+        $questions['questions'] = array_merge($questions['questions'], $real_questions);
+    }
+    else {// Questions menu student case
+        require_once($CFG->dirroot.'/mod/quiz/lib.php');
         $lastattemptquery = "SELECT *
         FROM {quiz_attempts}
         WHERE userid = ".$senderid."
         AND quiz = ".$quizid."
         ORDER BY timestart DESC
         LIMIT 1";
-        if(!is_null($quizattemptid))//get the attempt data of a specific quiz attempt - student
-        {
-            $lastattemptquery = "SELECT *
-                                 FROM {quiz_attempts}
-                                 WHERE id = ".$quizattemptid;
-        }
-        else if($hascap)//get the last attempts data of all users of a specific quiz - teacher
-        {
-            $lastattemptquery = "SELECT *
-                                 FROM {quiz_attempts} qa
-                                 WHERE qa.quiz = ".$quizid."
-                                 AND qa.timestart = (
-                                     SELECT MAX(qa_max.timestart)
-                                     FROM {quiz_attempts} qa_max
-                                     WHERE qa_max.quiz = qa.quiz
-                                     AND qa_max.userid = qa.userid
-                                 );";
-        }
-        $lastattemptdata=$DB->get_records_sql($lastattemptquery);
-        if ($lastattemptdata) {
-            foreach ($lastattemptdata as $qzattempt) {
-                // Explode the layout string into an array of slot numbers
-                $slotNumbers = explode(',', $qzattempt->layout);
-                // Filter out the "0" entries, as they represent empty slots
-                $slotNumbers = array_filter($slotNumbers, function($value) {
-                    return $value !== '0';
-                });
-                // Check if slot numbers are available
-                if (!empty($slotNumbers)) {
-                    require_once($CFG->dirroot.'/mod/quiz/lib.php');
-                    // get slot url
-                    $attemptobj = quiz_create_attempt_handling_errors(intVal($qzattempt->id), intVal(($quizchat->cmid)));
-                    // get all slots from the attempt object
-                    $slots = $attemptobj->get_slots();
-                    $slot = null;
-                    $questionnumber = null;
-
-                    // build a mapping of questionattemptid to slot and questionnumber
-                    $questionattempt_map = [];
-                    foreach ($slots as $current_slot) {
-                        $question_attempt = $attemptobj->get_question_attempt($current_slot);
-                        $questionattempt_map[$question_attempt->get_database_id()] = [
-                            'slot' => $current_slot,
-                            'questionnumber' => $attemptobj->get_question_number($current_slot)
-                        ];
-                    }
-
-                    
-
-
-
-
-
-                    // get the slot numbers with their order
-                    foreach ($slotNumbers as $slotNumber) {
-                        //get question id to each slot number
-                        $questionquery = "SELECT qa.questionid AS id, qa.slot AS teacherslot, qa.questionsummary, qa.id as questionattemptid, qa.behaviour as questiontype
-                        FROM {question_attempts} AS qa
-                        JOIN {question_usages} AS qu ON qa.questionusageid = qu.id
-                        WHERE qu.contextid = ".$quizcontextid." AND qa.slot = ".$slotNumber." AND qa.questionusageid = ".$qzattempt->uniqueid.";";
-                        $questiondata = $DB->get_records_sql($questionquery);
-                        if (!empty($questiondata)) {
-                            foreach($questiondata as $id => $question){
-                                // retrieve the slot and questionnumber for the desired questionattemptid
-                                if (isset($questionattempt_map[$question->questionattemptid])) {
-                                    $slot = $questionattempt_map[$question->questionattemptid]['slot'];
-                                    $questionnumber = $questionattempt_map[$question->questionattemptid]['questionnumber'];
-                                }
-                                if (strcmp($question->questiontype,"informationitem") != 0) { //if not description type
-                                    //Hide questions data in student view, that is sent in get_questionslot service.
-                                    //Only studentquestionorder and questionattemptid are sent
-                                    //If the caller function is execute (question menu in student view is the caller), hide teacherslotorder - questionsummary - questionlink - questionid.
-                                    //Otherwise show them
-                                    $teacherorder = strval(QUIZCHAT_STUDENT_QUESTION_ID);//'-1'
-                                    $summary = '-';
-                                    $questionpreviewlink = '-';
-                                    $qid = strval(QUIZCHAT_STUDENT_QUESTION_ID);//'-1'
-                                    $q_name = '-';
-                                    if($caller == 'get_questioninfo'||$caller2 == 'get_questioninfo'||$hascap) {
-                                        $teacherorder = $question->teacherslot;
-                                        $summary = $question->questionsummary;
-                                        $questionpreviewurl = new \moodle_url('/question/bank/previewquestion/preview.php', ['cmid' => $quizchat->cmid, 'id' => $question->id]);
-                                        $questionpreviewlink = $questionpreviewurl->out(false);
-                                        $qid = $question->id;
-                                        $q_name = get_question_name_by_id($qid);
-                                    }
-                                    if($searchtext!=="") {
-                                        $searchtext = strtolower($searchtext);
-                                        if (($searchtext === $questionnumber) && !$hascap) {//if student search by student question order
-                                            array_push($questions['questions'], [
-                                                'questionid'            => $qid,
-                                                'teacherslotorder'      => $teacherorder,
-                                                'questionsummary'           => $summary,
-                                                'studentquestionorder'  => $questionnumber,//strval($studentOrder + 1),
-                                                'questionlink' => $questionpreviewlink,
-                                                'questionattemptid' => $question->questionattemptid,
-                                                'questionname' => $q_name
-                                            ]);
-                                            break 2;
-                                        }
-                                        else if((strpos($q_name, $searchtext) !== false) && $hascap) {
-                                            // Extract the questionid values into a separate array
-                                            $questionIds = array_column($questions['questions'], 'questionid');
-
-                                            // Check if $qid doesn't exist in $questionIds
-                                            if (!in_array($qid, $questionIds) || $qid == -1) {
-                                                array_push($questions['questions'], [
-                                                    'questionid' => $qid,
-                                                    'teacherslotorder' => $teacherorder,
-                                                    'questionsummary' => $summary,
-                                                    'studentquestionorder' => $questionnumber,
-                                                    'questionlink' => $questionpreviewlink,
-                                                    'questionattemptid' => $question->questionattemptid,
-                                                    'questionname' => $q_name
-                                                ]);
-                                            }
-                                        }
-                                    }
-                                    else {
-                                        // Extract the questionid values into a separate array
-                                        $questionIds = array_column($questions['questions'], 'questionid');
-
-                                        // Check if $qid doesn't exist in $questionIds
-                                        if (!in_array($qid, $questionIds) || $qid == -1) {
-                                            array_push($questions['questions'], [
-                                                'questionid' => $qid,
-                                                'teacherslotorder' => $teacherorder,
-                                                'questionsummary' => $summary,
-                                                'studentquestionorder' => $questionnumber,
-                                                'questionlink' => $questionpreviewlink,
-                                                'questionattemptid' => $question->questionattemptid,
-                                                'questionname' => $q_name
-                                            ]);
-                                        }
-                                    }
-                                }
-                                
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            if($hascap) {
-                $quizobj = quiz::create($quizchat->quiz, $USER->id);
-                $quizobj->preload_questions();
-                $quizobj->load_questions();
-                $questionsdata = $quizobj->get_questions(null, false);
-                $questionIds = array_keys($questionsdata);
-                if (!empty($questionsdata)) {
-                    foreach($questionsdata as $questionid => $question){
-                        $teacherorder = $question->slot;
-                        $summary = $question->questiontext;
-                        $questionpreviewurl = new \moodle_url('/question/bank/previewquestion/preview.php', ['cmid' => $quizchat->cmid, 'id' => $questionid]);
-                        $questionpreviewlink = $questionpreviewurl->out(false);
-                        $qid = $questionid;
-                        $q_name = $question->name;
-                        if($searchtext!=="") {
-                            if(strpos(strtolower($q_name), strtolower($searchtext)) !== false) {
-                                
-                                array_push($questions['questions'], [
-                                    'questionid' => $qid,
-                                    'teacherslotorder' => $teacherorder,
-                                    'questionsummary' => $summary,
-                                    'studentquestionorder' => -1,
-                                    'questionlink' => $questionpreviewlink,
-                                    'questionattemptid' => -1,
-                                    'questionname' => $q_name
-                                ]);
-
-                            }
-                        }
-                        else {
-                            array_push($questions['questions'], [
-                                'questionid' => $qid,
-                                'teacherslotorder' => $teacherorder,
-                                'questionsummary' => $summary,
-                                'studentquestionorder' => -1,
-                                'questionlink' => $questionpreviewlink,
-                                'questionattemptid' => -1,
-                                'questionname' => $q_name
-                            ]);
-                        }
-                    }
-                }
-            }
-            
-        }
-   return $questions;
-}
-
-/**
- * Returns string of question info that will be displayed in message body
- * @param int $questionattemptid question attempt id
- * @param bool $has_sendallcap if student question info will be slot number, otherwise question name/title (will be implemented later)
- * @param int $quizchatid quizchat id
- * @param int $userid user id
- * @param string $quiz_attempt_txt language string attempt
- * @param string $generalstring language string general
- * @return array question info that will be displayed in message body
- */
-function get_questioninfo($questionattemptid, $has_sendallcap, $quizchatid, $userid, $quiz_attempt_txt, $generalstring)
-{
-    global $DB;
-    $slot = "";
-    //$quiz_attempt_txt = get_string('quiz_attempt_txt', 'block_quizchat');
-    //get slot number and display it as question info in student view
-    $query = "SELECT slot, questionusageid, questionid
-    FROM {question_attempts}
-    WHERE id= ".$questionattemptid.";";
-    $question_attempt_record = $DB->get_record_sql($query);
-    $slot = $question_attempt_record->slot;
-    $questionusageid = $question_attempt_record->questionusageid;
-    $questionid = $question_attempt_record->questionid;
-    $quizattempt_query = "SELECT id,attempt
-    FROM {quiz_attempts}
-    WHERE uniqueid= ".$questionusageid.";";
-    $quizattempt_record = $DB->get_record_sql($quizattempt_query);
-    $quizattemptid = $quizattempt_record->id;
-    $quizattemptnr = $quizattempt_record->attempt;
-    $slotorder = 0;
-    if(!is_null($slot)) {
-        //get slot order
-        $questions_infos = get_slotorder($userid, $quizchatid, "", $generalstring, $quizattemptid);
-        foreach ($questions_infos as $questions_info) {
-            foreach ($questions_info as $question) {
-                if($question['teacherslotorder'] === $slot)
-                {
-                    if(!$has_sendallcap) {
-                        $slotorder = $question['studentquestionorder'];
-                    } else {
-                        //get slot number and display it as question info in student view
-                        $q_name = get_question_name_by_id($question['questionid']);
-                        $slotorder = "<a href=\"{$question['questionlink']}\" id='questionref_link_{$question['questionid']}' class='questionref' onclick=\"window.open('{$question['questionlink']}', '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600'); return false;\">$q_name</a>";
-                    }
-                    break 2;
-                }
-            }
-        }
+        $qzattempt = $DB->get_record_sql($lastattemptquery);
+        $attemptobj = quiz_create_attempt_handling_errors(intVal($qzattempt->id), intVal(($quizchat->cmid)));
+        $qubaid = intVal($qzattempt->uniqueid);
+        $quba = \question_engine::load_questions_usage_by_activity($qubaid);
+        $slots = $attemptobj->get_slots();
+        // Use ReflectionClass to access protected 'questionattempts'  
+        $rc = new ReflectionClass($quba);
+        $prop = $rc->getProperty('questionattempts');
+        $prop->setAccessible(true);
+        $byreflection_quesattempts = $prop->getValue($quba);
+        $real_questions = array_values(array_map(
+            fn($attempt) => [
+                'questionid' => -1,
+                'teacherslotorder' => -1,
+                'questionsummary' => "-",
+                'studentquestionorder' => $attemptobj->get_question_number(intVal($attempt->get_slot())), 
+                'questionlink' => "-",
+                'questionattemptid' => intVal($attempt->get_database_id()),
+                'questionname' => "-"
+            ],
+            array_filter($byreflection_quesattempts, fn($attempt) => $attemptobj->get_question_type_name(intVal($attempt->get_slot())) !== 'description' && stristr($attemptobj->get_question_number(intVal($attempt->get_slot())), strtolower($searchtext)))
+        ));
+        //questions sorting
+        array_multisort(array_column($real_questions, 'studentquestionorder'), SORT_ASC, $real_questions);
+        $questions['questions'] = array_merge($questions['questions'], $real_questions);
     }
-    return array(
-        'slotorder' => $slotorder,
-        'quizattemptnr' => " - ".$quiz_attempt_txt." ".$quizattemptnr,
-        'questionid' => $questionid
-    );
+   return $questions;
 }
 
 /**

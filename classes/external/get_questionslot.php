@@ -64,7 +64,7 @@ class get_questionslot extends \external_api {
         $questions_infos = [];
         $partial_name_sql = preg_replace('/\W/i', ' ', $partial_name);//replaces all non-word characters (including underscores) with a space.
         $partial_name_sql = preg_replace('/\s+/i', ' ', $partial_name_sql);//replaces all occurrences of one or more whitespace characters with a single space.
-        $questions_infos = get_slotorder($senderid, $quizchatid, $partial_name, $general_string, null);
+        $questions_infos = get_slotorder($senderid, $quizchatid, $partial_name, $general_string);
         return $questions_infos;
     }
 }

@@ -55,7 +55,6 @@ class get_users extends \external_api {
                 'lastname' => new \external_value(PARAM_RAW, 'Users last name.'),
                 'firstname' => new \external_value(PARAM_RAW, 'Users first name.'),
                 'fullname' => new \external_value(PARAM_RAW, 'Users full name.'),
-                'profileimageurlsmall' => new \external_value(PARAM_RAW, 'Users profileimageurlsmall.'),
                 'state' => new \external_value(PARAM_RAW, 'Users state in a quiz attempt.'),
                 'questionname' => new \external_value(PARAM_RAW, 'Users state in a quiz attempt.'),
                 'questionid' => new \external_value(PARAM_INT, 'Question id.')
@@ -70,7 +69,7 @@ class get_users extends \external_api {
         $partial_name_sql = preg_replace('/\s+/i', ' ', $partial_name_sql);
         $everyone = $everyonetxt;//get_string('everyone', 'block_quizchat');
         if (!is_null($quizid) && $questionid != -1) {
-            $users_infos = get_usersdata([], $quizid, true, $partial_name_sql, $questionid, $general_txt);
+            $users_infos = get_usersdata($quizid, $partial_name_sql, $questionid, $general_txt);
         }
         // Insert the new element at the specified index
         if(str_contains(strtolower($everyone), strtolower($partial_name_sql))&&$questionid == 0){
@@ -79,7 +78,6 @@ class get_users extends \external_api {
                 'lastname' => $everyone,
                 'firstname' => '',
                 'fullname' => $everyone,
-                'profileimageurlsmall' => '',
                 'state' => '',
                 'questionname' => $general_txt,
                 'questionid' => $questionid
@@ -95,7 +93,6 @@ class get_users extends \external_api {
                 'lastname' => $gname,
                 'firstname' => '',
                 'fullname' => $gname,
-                'profileimageurlsmall' => '',
                 'state' => '',
                 'questionname' => $qname,
                 'questionid' => $questionid
