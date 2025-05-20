@@ -63,8 +63,9 @@ class qcmaster implements renderable, templatable {
      */
     public function export_for_template(\renderer_base $output)
     {
-        global $USER, $DB, $PAGE, $OUTPUT;
-        
+        global $USER, $DB, $PAGE, $OUTPUT, $CFG;
+        require_once($CFG->libdir .'/grouplib.php');
+        require_once($CFG->dirroot . '/group/lib.php');
         $data = new \stdClass();
         $quiz = $DB->get_record('quiz', array('id' => $PAGE->cm->instance));
         $quizid = $quiz->id;
@@ -97,7 +98,7 @@ class qcmaster implements renderable, templatable {
             'everyone', 'instructors',
             'from', 'to', 'group',
             'unenrolled','deleted','abandoned',
-            'inprogress','noattempt','finished','suspended','student_question_select', 'student_question_general','group_txt', 'quiz_attempt_txt','today', 'sidemenu_you','strftimerecentfull'
+            'inprogress','noattempt','finished','suspended','student_question_select', 'student_question_general','group_txt', 'quiz_attempt_txt','today', 'sidemenu_you','strftimerecentfull', 'deleted_langstr'
         ];
         $langstr_obj = new \stdClass();
         $plugin_name = 'block_quizchat';
@@ -111,12 +112,27 @@ class qcmaster implements renderable, templatable {
                 $langstr_obj->$key = get_string($key, $plugin_name);
             }
         }
+        $data->langstr_json = json_encode($langstr_obj);
         // Check if the user has any attempts for the quiz
         $enableblock = check_blockavailability($quizchat->quiz);
+        $group_access = false;
+        $quizobj = \mod_quiz\quiz_settings::create_for_cmid($quizchat->cmid);
+        $cm = $quizobj->get_cm();
+        if($data->is_teacher && groups_get_activity_groupmode($cm)) {
+            if(is_quiz_accessible_to_group((int)$quizchat->quiz)) {
+                $group_access = true;
+            }
+        }
+        else if($data->is_teacher && !groups_get_activity_groupmode($cm)){
+            $group_access = true;
+        }
+        else if(!$data->is_teacher) {
+            $group_access = true;
+        }
         // Load and initialize all javascript modules
         // initializing constants via web service
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules#top_level_await
-        if(!self::$amd_init_master_called){
+        if((!self::$amd_init_master_called && $group_access && $data->is_teacher) || (!self::$amd_init_master_called && $enableblock && !$data->is_teacher)){
             $msg_cookie_id = $USER->id . '_' . $quizid . '_' .time();
             $PAGE->requires->js_call_amd(
                 'block_quizchat/master',
@@ -125,7 +141,7 @@ class qcmaster implements renderable, templatable {
                     intVal($USER->id),
                     $poll_timeout_setting,
                     $unnotify_timeout_setting,
-                    $no_drawer_flag,$langstr_obj, $fullscreen_flag
+                    $no_drawer_flag, $fullscreen_flag
             ]);
             self::$amd_init_master_called = true;
         }
@@ -140,33 +156,67 @@ class qcmaster implements renderable, templatable {
                 ]);
             self::$amd_init_student_called = true;
         }
-        if($data->is_teacher && !self::$amd_init_instructor_called && self::$amd_init_master_called){
+        if(($data->is_teacher && !self::$amd_init_instructor_called && self::$amd_init_master_called) ||  ($data->is_teacher && !self::$amd_init_instructor_called && !$group_access)){
             $data->quizchat_msg_length = get_config('block_quizchat', 'quizchat_msg_length');
             $data->sendmsgcap_students = check_sendmsgcap_students($quizchat);//check if students are allowed to send messages
             
             //// create help icon
-            $helpicon = $OUTPUT->help_icon('help_deactivated_students_msgs', 'block_quizchat');
             // URL for permissions page
             $permissions_url = new \moodle_url('/admin/roles/permissions.php', array('contextid' => $quizchat->contextid));
-            $permissionpage_txt = get_string('role_permissions_page', 'block_quizchat');
-            // Create the content to append
-            $appendContent = "<a href='{$permissions_url->out(false)}' id='rolepermission_link' name='rolepermission_link'> {$permissionpage_txt}</a>.";
-            // Find position of '</p>' in the help icon
-            $position = strpos($helpicon, '&lt;/p&gt;');
-            // Insert content before the closing </p> tag
-            $helpicon_mod = substr_replace($helpicon, htmlspecialchars($appendContent, ENT_QUOTES, 'UTF-8'), $position, 0);
-            $data->helpicon = $helpicon_mod;
+            $quizchat->permissions_url = $permissions_url->out(false);
+            $data->permissions_url = $quizchat->permissions_url;
 
             $questions_form = new questions_form(null,["quizchatid" => $quizchat->id]);
             $instructor_form = new block_quizchat_instructor_form(null, ["id" => $quizchat->id]);
-            $data->questions_form = $questions_form->render();
-            $data->instructor_form = $instructor_form->render();
-            $PAGE->requires->js_call_amd(
-                'block_quizchat/instructor',
-                'init_instructor', [
-                    $quizchat, $msg_len_setting, $txt_validation_msg, $groups
-                ]);
-            self::$amd_init_instructor_called = true;
+
+            //get groups menu
+            $url = $PAGE->url;
+            $groups_menu = '';
+            $group_access_notify = '';
+            // A new groupselector is unnecessary if the block is added to the results page, as the page already contains one.
+            $results_page = (strpos($url->out(false), "mod/quiz/report.php")?true:false);
+            if (groups_get_activity_groupmode($cm) && !$results_page) {
+                // Groups are being used, so output the group selector if we are not downloading.
+                $groups_menu = groups_print_activity_menu($cm, $url, true);
+                if(!$group_access) {
+                    $group_access_notify = '<div class="alert alert-danger fade in" role="alert">'.
+                    get_string('quiz_not_accessible', 'block_quizchat').
+                    '</div>';
+                }
+                // Add line
+                if(!$fullscreen_flag){
+                    $groups_menu .= $group_access_notify.'<div class="line-with-text" id="empty_line"><hr></div>';
+                }
+                else {
+                    $groups_menu = 
+                    '<div class="panel-header-container">
+                        <div class="border-bottom p-1 px-sm-2">'.
+                        $groups_menu.$group_access_notify.
+                        '</div>
+                    </div>';
+                }
+                
+            }
+            else if(groups_get_activity_groupmode($cm) && $results_page) {
+                if(!$fullscreen_flag && !$group_access){
+                    $group_access_notify = '<div class="alert alert-danger fade in" role="alert">'.
+                    get_string('quiz_not_accessible', 'block_quizchat').
+                    '</div>';
+                    $groups_menu .= $group_access_notify.'<div class="line-with-text" id="empty_line"><hr></div>';
+                }
+            }
+            $data->groups_menu = $groups_menu;
+            $data->group_access = $group_access;
+            $data->questions_form = $group_access? $questions_form->render() : '';
+            $data->instructor_form = $group_access? $instructor_form->render() : '';
+            if($group_access) {
+                $PAGE->requires->js_call_amd(
+                    'block_quizchat/instructor',
+                    'init_instructor', [
+                        $quizchat, $msg_len_setting, $txt_validation_msg, $groups
+                    ]);
+                self::$amd_init_instructor_called = true;
+            }
         }
         $PAGE->requires->css('/blocks/quizchat/quizchat.css');
 

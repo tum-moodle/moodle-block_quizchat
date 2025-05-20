@@ -16,6 +16,8 @@ Students are allowed to chat only with the instructors. It also comes with built
 
 - In order to ensure no messages are overlooked and providing a more structured communication flow in Quizchat, instructors have the option to open the block in a new page. The Page view of Quizchat allows instructors to clearly differentiate between private and group conversations to be notified of new messages in real time, clearly see which conversation the new message belongs to, and view messages of each conversation separately for a more focused discussion experience.
 
+- Support for Separate Groups and Groupings. Quizchat block plugin fully supports Moodle’s separate groups mode and groupings. In separate groups mode, instructors can see and send messages within their own group, maintaining privacy between groups. Additionally, messages can be filtered by the selected group or grouping, and users can send messages targeted specifically to their own group or a defined grouping. If a group or grouping is deleted, existing messages remain visible and are clearly marked as (deleted) next to the receiver’s name for clarity.
+
 # Compatibility
 This block is compatible with Moodle versions 4.1 to 4.5 and is also compatible with PHP versions 8.0 to 8.2 (please check the respective compatibility for your Moodle version). Moodle 4.3+ is required for Behat tests, otherwise the Behat scenario 'Recieving messages in students view with refernced question' in 'question_ref.feature' will fail. Since the edit question number feature is only available starting from Moodle version 4.3.
 

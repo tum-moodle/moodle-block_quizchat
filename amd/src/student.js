@@ -33,6 +33,7 @@ import {
     lang_strings,
     write_sessionStorage
 } from 'block_quizchat/master';
+
 let quizchatobj;
 var msglen;
 var requiredmsg;

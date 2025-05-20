@@ -23,7 +23,7 @@
 import * as Notification from 'core/notification';
 import {call as fetchMany} from 'core/ajax';
 import $ from 'jquery';
- import {
+import {
      push_quizchat_users,
      lang_strings
  } from 'block_quizchat/master';
@@ -75,13 +75,6 @@ export const processResults = (selector, results) => {
                 label: container,
                 selected: (data.id == '0' || data.id == '-2') ? true : false,
             });
-            /* if(data.id == '0' || data.id == '-2') {
-                first_element_txt = name;
-                first_element_value = data.id;
-            } */
-            //$('#block_quizchat_instructor_form ul.form-autocomplete-suggestions li:first-child').trigger('click');
-            //$('#block_quizchat_instructor_form span[role="option"]').contents().last().replaceWith(first_element_txt);
-            //$('#block_quizchat_instructor_form span[role="option"]').attr('data-value', first_element_value);
     });
     return options;
 };
@@ -94,31 +87,4 @@ export const transport = (selector, query, callback) => {
     list(quizid, everyonetxt, generaltxt, grouptxt, query)
         .then(callback)
         .catch(Notification.exception);
-    //alert(list_data);
-    /* let group_string = lang_strings['group_txt']; //start here monday replace the old selection with the new one
-    let everyone_string = lang_strings['everyone'];
-    let questionid = 0;//general question
-    if("" === $('#fitem_id_block_quizchat_questions_select option:selected')[0].value){
-        // If a selection has been made and the search input gets focused and blurred again
-        // without making a different selection the select element will have an empty
-        // selected options property with no receiverid at all
-        // => get selected option from span[role="option"]
-        questionid = $('#fitem_id_block_quizchat_questions_select span[role="option"]')[0].dataset.value;
-    } else {
-        // The select element is ok, just get the value
-        questionid = $('#id_block_quizchat_questions_select').val();
-    }
-    if(questionid == 0) {//general question
-        //select everyone in participants
-        remove_divcontainer_ifexists();
-        $('#block_quizchat_instructor_form span[role="option"]').contents().last().replaceWith(everyone_string);
-        $('#block_quizchat_instructor_form span[role="option"]').attr('data-value', quizchat_address_everyone);
-    }
-    else {//question selected
-        //select question group in participants
-        let gname = $('#block_quizchat_questions_form span[role="option"] div.divcontainer-questions').attr('title');
-        remove_divcontainer_ifexists();
-        $('#block_quizchat_instructor_form span[role="option"]').contents().last().replaceWith(group_string + ' ' + gname);
-        $('#block_quizchat_instructor_form span[role="option"]').attr('data-value', quizchat_address_question_group);
-    } */
 };

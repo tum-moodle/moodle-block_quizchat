@@ -36,4 +36,28 @@ $observers = [
         'internal'  => true,
         'priority'    => 9999,
     ],
+    [
+        'eventname' => '\core\event\group_updated',
+        'callback' => '\block_quizchat\quizchat_observers::moodle_group_updated',
+        'internal'  => true,
+        'priority'    => 9999,
+    ],
+    [
+        'eventname' => '\core\event\grouping_updated',
+        'callback' => '\block_quizchat\quizchat_observers::moodle_grouping_updated',
+        'internal'  => true,
+        'priority'    => 9999,
+    ],
+    [
+        'eventname' => '\core\event\group_deleted',
+        'callback' => '\block_quizchat\quizchat_observers::moodle_group_deleted',
+        'internal'  => true,
+        'priority'    => 9999,
+    ],
+    [
+        'eventname' => '\core\event\grouping_deleted',
+        'callback' => '\block_quizchat\quizchat_observers::moodle_grouping_deleted',
+        'internal'  => true,
+        'priority'    => 9999,
+    ]
 ];

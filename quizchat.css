@@ -243,13 +243,26 @@ label#id_block_quizchat_questions_select_label {
 }
 
 #fitem_id_block_quizchat_users_select input,
-#fitem_id_block_quizchat_questions_select input {
-    box-sizing:border-box;
-    display:inline-block;
+#fitem_id_block_quizchat_questions_select input,
+#block_quizchat_messages #selectgroup select,
+#fullscreen-page #selectgroup select {
+    box-sizing:border-box !important;
+    display:inline-block !important;
     margin-left:0px;
     margin-right:0px;
     width:100%;
     max-width:100%;
+}
+
+#block_quizchat_messages .groupselector,
+#fullscreen-page .groupselector{
+    display: block;             
+    width: 100%;                
+}
+
+#block_quizchat_messages .d-inline-block,
+#fullscreen-page .d-inline-block {
+    display: block !important;            
 }
 
 #block_quizchat_instructor_form .input-group,
@@ -340,7 +353,12 @@ input-group-prepend {
     text-decoration: line-through;
 }
 
-
+#help_deactivated_students_msgs_help {
+  font-weight: normal;
+  padding-left: 15px;
+  padding-top: 3px;
+  display: none;
+}
 .statecircle-base {
     width: 15px;
     height: 15px;
@@ -432,12 +450,12 @@ ul#block_quizchat_keyStatusColor {
 .line-with-text hr {
     flex: 1;
     border: none;
-    border-top: 1px solid lightgrey;
+    border-top: 1px solid #505050;
     margin: 0 10px;
 }
 .line-with-text span {
     padding: 0 10px;
-    color: grey/* Example font */
+    color: #505050;
 }
 #send_msg_not_allowed {
     display: flex;
@@ -481,4 +499,17 @@ a[id="allmsgs_link"]:hover,
 a[id^="click_to_respond_link_"]:hover, 
 a[id^="questionref_link_"]:hover {
     text-decoration: underline;
+}
+
+.block_quizchat_msg_area_body .bg-light{
+    background-color: #ffffff !important;
+}
+
+.block_quizchat_msg_area_body .bg-secondary{
+    background-color: #EBEEEF !important;
+}
+#block_quizchat_messages .groupselector .custom-select,
+#fs_bg .groupselector .custom-select,
+.block-content .groupselector .custom-select {
+    width: 100%;
 }

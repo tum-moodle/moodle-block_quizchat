@@ -102,4 +102,7 @@ $string['fullscreen'] = 'Open Quizchat in a new page';
 $string['attempt_deleted_notification'] = 'All Quizchat-messages related to the deleted quiz attempt(s) have been successfully deleted.';
 $string['eventmessageadded'] = 'A new Quizchat message is sent.';
 $string['sidemenu_you'] = 'You';
-
+$string['permissions_help_icon'] = 'Help with role permissions';
+$string['close_help_icon'] = 'Close Help with role permissions';
+$string['quiz_not_accessible'] = 'The selected group does not have access to this quiz. Please check the quiz settings or select another group.';
+$string['deleted_langstr'] = 'deleted';

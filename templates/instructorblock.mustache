@@ -40,9 +40,35 @@
 {{{ instructor_form }}}
 {{^sendmsgcap_students}}
 <small class="block_quizchat_instructor_info">
-    {{#pix}} i/info, core, {{#str}} alt_infoicon, block_quizchat {{/str}}{{/pix}}<span id="charCount">{{{ quizchat_msg_length }}}{{#str}} spantxt_charCount, block_quizchat {{/str}}</span>
-    <span id="send_msg_not_allowed" style="display: flex; align-items: center;">{{#pix}} i/info, core, Info {{/pix}}{{#str}} send_msg_deactivated_teacher, block_quizchat{{/str}}
-    <div id="permission-link">{{{helpicon}}}</div></span><span style="display: block;">{{#pix}} i/info, core, {{#str}} alt_infoicon, block_quizchat {{/str}}{{/pix}}{{#str}} status, block_quizchat {{/str}}</span>
+    {{#pix}} i/info, core, {{#str}} alt_infoicon, block_quizchat {{/str}}{{/pix}}
+    <span id="charCount">{{{ quizchat_msg_length }}}{{#str}} spantxt_charCount, block_quizchat {{/str}}</span>
+    <span id="send_msg_not_allowed" style="display: flex; align-items: center;">
+        {{#pix}} i/info, core, Info {{/pix}}
+        {{#str}} send_msg_deactivated_teacher, block_quizchat{{/str}}
+        &nbsp;
+        <a href="{{{ permissions_url }}}" id="permissions_settings_icon" name="permissions_settings_icon" alt="{{#str}} role_permissions_page, block_quizchat {{/str}}" title="{{#str}} role_permissions_page, block_quizchat {{/str}}">
+          {{#pix}} a/setting, core{{/pix}}
+        </a>
+        &nbsp;
+        <a href="#open_permissions_help" id="permissions_help_icon" name="permissions_help_icon" alt="{{#str}} permissions_help_icon, block_quizchat {{/str}}" title="{{#str}} permissions_help_icon, block_quizchat {{/str}}">
+          {{#pix}} help, core{{/pix}}
+        </a>
+        <a href="#close_permissions_help" id="close_help_icon" name="close_help_icon" style="display: none;"  alt="{{#str}} close_help_icon, block_quizchat {{/str}}" title="{{#str}} close_help_icon, block_quizchat {{/str}}">
+          {{#pix}} e/cancel_solid_circle, core{{/pix}}
+        </a>
+    </span>
+    {{! display:none for toggle_help_deactivated_students_msgs_help() in instructor.js }}
+    <span id="help_deactivated_students_msgs_help" style="display: none;">
+      <p class="font-weight-normal" >
+        {{{ help_deactivated_students_msgs_help }}}
+        {{#str}} help_deactivated_students_msgs_help, block_quizchat {{/str}}
+        &nbsp;
+        <a href="{{{ permissions_url }}}" id="rolepermissions_link" name="rolepermissions_link" alt="{{#str}} role_permissions_page, block_quizchat {{/str}}" title="{{#str}} role_permissions_page, block_quizchat {{/str}}">
+          {{#str}} role_permissions_page, block_quizchat {{/str}}.
+        </a>
+      </p>
+    </span>
+    <span style="display: block;">{{#pix}} i/info, core, {{#str}} alt_infoicon, block_quizchat {{/str}}{{/pix}}{{#str}} status, block_quizchat {{/str}}</span>
     <ul id="block_quizchat_keyStatusColor">
         <li><div class="statecircle-base-menu finished state-color-circle"></div> {{#str}} finished, block_quizchat {{/str}}
         </li>

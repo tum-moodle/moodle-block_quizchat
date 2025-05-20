@@ -29,7 +29,6 @@ import {
         quizchat_address_question_group,
         quizchat_general_question_id,
         quizchat_users,
-        lang_strings,
         quizchat_msg,
         quizchat_msg_counters,
         update_msg_area,
@@ -38,8 +37,10 @@ import {
         allmsgs_count_notf,
         quizchatid,
         isToday,
-        write_sessionStorage
+        write_sessionStorage,
+        lang_strings
     } from 'block_quizchat/master';
+
 import {
     checkCharsLength as checkMsgLength,
     resetCharsCount as updateCharsCount,
@@ -659,15 +660,23 @@ const setMenus = () => {
 };
 
 const help_click = () => {
-    $('#rolepermission_link').on('click', function(event) {
-            event.preventDefault();
-            // Get the href attribute value
-            let hrefValue = $('#rolepermission_link').attr('href');
-            let newwindow = window.open(hrefValue,'rolepermission_link',
-            '_blank', 'toolbar=yes,scrollbars=yes,resizable=yes,width=600,height=600');
-            if (window.focus) {newwindow.focus();}
-        });
-    };
+    toggle_help_deactivated_students_msgs_help();
+};
+
+const toggle_help_deactivated_students_msgs_help = () => {
+  let help_el = document.getElementById('help_deactivated_students_msgs_help');
+  let help_icon = document.getElementById('permissions_help_icon');
+  let close_icon = document.getElementById('close_help_icon');
+  if("none" == help_el.style.display) {
+    help_el.style.display = "flex";
+    help_icon.style.display = "none";
+    close_icon.style.display = "inline";
+  } else {
+    help_el.style.display = "none";
+    help_icon.style.display = "inline";
+    close_icon.style.display = "none";
+  }
+};
 
 const fullscreen_click = (event) => {
             event.preventDefault();
@@ -1186,8 +1195,13 @@ export const init_instructor = (arg_quizchat, confingsetting_msglen, reqmsg, rec
         $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').on('click', users_select_change);
         $('#block_quizchat_instructor_form span.form-autocomplete-downarrow').on('change', users_select_change);
         $('#block_quizchat_instructor_form').submit(send_msg);
-        $('#permission-link').on('click', help_click);
-        $('.fullscreen_actionmenu_item').on('click', fullscreen_click);
+        $(document).on('click', '#permissions_help_icon', help_click);
+        $(document).on('click', '#close_help_icon', help_click);
+        let fsaction_link = document.querySelector('.block_quizchat.block_with_controls a.fullscreen_actionmenu_item');
+        if(fsaction_link) {
+          fsaction_link.tabIndex = "0";
+          fsaction_link.addEventListener('click', fullscreen_click);
+        }
         $(textinputcontrolname).on('input',text_oninput);
         $(textinputcontrolname).on('blur',text_onblur);
         $(textinputcontrolname).on('invalid',text_setvalidmsg);

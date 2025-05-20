@@ -43,8 +43,10 @@ Feature: Click to respond.
     And I wait until the page is ready
     And I set the field "block_quizchat_input_student_send" to "I'm teacher 2"
     And I press "Send"
-    And I log in as "teacher1"
-    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait "2" seconds
+    And I close all opened windows
+    And I log out
+    And I am on the "Quiz 1" "mod_quiz > Edit" page logged in as "teacher1"
     And I wait until the page is ready
     And the "title" attribute of ".questions-menu" "css_element" should contain "General"
     And I set the field "block_quizchat_input_instructor_send" to "I'm teacher 1"

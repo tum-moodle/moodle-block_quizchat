@@ -62,7 +62,7 @@ Feature: send and recieve a message in a quizchat
     And I press "Send"
     Then I should see "I'm teacher 2"
     And I log in as "teacher1"
-    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I am on the "Quiz 1" "mod_quiz > Edit" page
     Then I should see "I'm teacher 2"
     And I log in as "student1"
     And I am on the "Quiz 1" "mod_quiz > View" page

@@ -46,7 +46,8 @@ class get_messages extends \external_api {
             'langstr_group' => new \external_value(PARAM_RAW, 'language string group'),
             'langstr_attempt' => new \external_value(PARAM_RAW, 'language string attempt'),
             'langstr_all' => new \external_value(PARAM_RAW, 'language string all'),
-            'langstr_strftimerecentfull' => new \external_value(PARAM_RAW, 'language string strftimerecentfull')
+            'langstr_strftimerecentfull' => new \external_value(PARAM_RAW, 'language string strftimerecentfull'),
+            'deleted_langstr' => new \external_value(PARAM_RAW, 'language string deleted')
         ]);
     }
     public static function execute_returns() {
@@ -99,8 +100,8 @@ class get_messages extends \external_api {
             )
         ]);
     }
-    public static function execute($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull) {
-        return get_msgs($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull);
+    public static function execute($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull, $deleted_langstr) {
+        return get_msgs($quizchatid, $most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull, $deleted_langstr);
     }
 
 }

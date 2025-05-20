@@ -63,9 +63,10 @@ Feature: Delete messages of deleted attempt
     And I press "Finish attempt"
     And I press "Submit all and finish"
     And I click on "Submit" "button" in the "Submit all your answers and finish?" "dialogue"
-    And I log out
+    And I wait "3" seconds
     And I close all opened windows
-    And I am on the "Quiz 1" "mod_quiz > View" page logged in as "teacher1"
+    And I log out
+    And I am on the "Quiz 1" "mod_quiz > edit" page logged in as "teacher1"
     And I navigate to "Results" in current page administration
     And I wait until the page is ready
     And I should see "I'd like to ask general question."

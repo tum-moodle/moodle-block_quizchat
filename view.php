@@ -24,9 +24,11 @@
 require_once('../../config.php');
 require_once(__DIR__ .'/lib/lib.php');
 global $DB;
-$blockid = required_param('blockid', PARAM_INT);
-$cmid = required_param('cmid', PARAM_INT);
+//$blockid = required_param('blockid', PARAM_INT);
+$cmid = required_param('id', PARAM_INT);
 $cm = $DB->get_record('course_modules', ['id' => $cmid]);
+$quizchat = $DB->get_record('block_quizchat', array('cmid' => $cmid));
+$blockid = $quizchat->instanceid;
 // Check permissions and context
 $context = context_block::instance($blockid);
 require_login();
@@ -37,7 +39,7 @@ $blockinstance = $DB->get_record('block_instances', array('id' => $blockid), '*'
 $blockcontext = context_block::instance($blockid);
 $theblock = block_instance($blockinstance->blockname, $blockinstance);
 // Page setup
-$PAGE->set_url('/blocks/quizchat/view.php', array('blockid' => $blockid));
+$PAGE->set_url('/blocks/quizchat/view.php', array('id' => $cmid));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('popup');
 $PAGE->set_title($theblock->title);

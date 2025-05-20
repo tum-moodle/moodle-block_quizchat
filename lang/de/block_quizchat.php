@@ -102,4 +102,7 @@ $string['fullscreen'] = 'Quizchat in einer neuen Seite öffnen';
 $string['attempt_deleted_notification'] = "Alle Quizchat-Nachrichten im Zusammenhang mit den gelöschten Quiz-Versuchen wurden erfolgreich gelöscht.";
 $string['eventmessageadded'] = 'Eine neue Quizchat-Nachricht wurde gesendet.';
 $string['sidemenu_you'] = 'Ich';
-
+$string['permissions_help_icon'] = 'Hilfe für Rollen-Rechte';
+$string['close_help_icon'] = 'Hilfe für Rollen-Rechte einklappen';
+$string['quiz_not_accessible'] = 'Die ausgewählte Gruppe hat keinen Zugriff auf dieses Quiz. Bitte überprüfen Sie die Quiz-Einstellungen oder wählen Sie eine andere Gruppe aus.';
+$string['deleted_langstr'] = 'gelöscht';

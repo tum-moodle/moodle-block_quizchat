@@ -90,7 +90,7 @@ class block_quizchat extends block_base
         if (check_sendallcap($quizchat)) {
             $controls = $content->controls;
             // Add custom action to the menu
-            $url = new moodle_url('/blocks/quizchat/view.php', array('blockid' => $this->instance->id, 'cmid' => $PAGE->cm->id));
+            $url = new moodle_url('/blocks/quizchat/view.php', array('id' => $PAGE->cm->id));
             $icon = new pix_icon('e/layers', get_string('fullscreen', 'block_quizchat'));
             $action = new action_menu_link_primary($url, $icon, get_string('fullscreen', 'block_quizchat'), array('class' => 'fullscreen_actionmenu_item'));
             array_unshift($controls,$action);

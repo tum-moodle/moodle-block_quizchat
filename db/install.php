@@ -26,8 +26,8 @@ defined('MOODLE_INTERNAL') || die;
 
 function xmldb_block_quizchat_install() {
     global $DB;
-    $group1 = ['name' => 'all'];
-    $group2 = ['name' => 'teachers'];
+    $group1 = ['name' => 'all', 'msgid' => null, 'groupid' => null, 'groupingid' => null];
+    $group2 = ['name' => 'teachers', 'msgid' => null, 'groupid' => null, 'groupingid' => null];
     $DB->insert_record('block_quizchat_group', $group1);
     $DB->insert_record('block_quizchat_group', $group2);
 }

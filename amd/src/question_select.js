@@ -23,7 +23,10 @@
 import * as Notification from 'core/notification';
 import {call as fetchMany} from 'core/ajax';
 import $ from 'jquery';
-import {quizchat_student_question_id,lang_strings} from 'block_quizchat/master';
+import {
+  quizchat_student_question_id,
+  lang_strings
+} from 'block_quizchat/master';
 
 export const list = (userid,qcid,query) => {
     return fetchMany([{

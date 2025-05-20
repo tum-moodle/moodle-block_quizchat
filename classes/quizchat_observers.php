@@ -53,4 +53,50 @@ class quizchat_observers {
         $messageid = $event->objectid;
         //\core\notification::info("A new Quizchat message with ID $messageid was sent.");
     }
+
+    /**
+     * Group updated event, change group name in block_quizchat_group table
+     *
+     * @param \core\event\group_updated $event
+     */
+    public static function moodle_group_updated(\core\event\group_updated $event) {
+        global $DB;
+        $g_name = $event->get_record_snapshot($event->objecttable, $event->objectid)->name;
+        $g_id = $event->objectid;
+        $updated = $DB->set_field('block_quizchat_messages', 'gname', $g_name, ['mgroupid' => $g_id]);
+    }
+
+    /**
+     * Grouping updated event, change grouping name in block_quizchat_group table
+     *
+     * @param \core\event\group_updated $event
+     */
+    public static function moodle_grouping_updated(\core\event\grouping_updated $event) {
+        global $DB;
+        $g_name = $event->get_record_snapshot($event->objecttable, $event->objectid)->name;
+        $g_id = $event->objectid;
+        $updated = $DB->set_field('block_quizchat_messages', 'gname', $g_name, ['mgroupingid' => $g_id]);
+    }
+
+    /**
+     * Group delete event, update group id in block_quizchat_group table
+     *
+     * @param \core\event\group_updated $event
+     */
+    public static function moodle_group_deleted(\core\event\group_deleted $event) {
+        global $DB;
+        $g_id = $event->objectid;
+        $updated = $DB->set_field('block_quizchat_messages', 'mgroupid', 0, ['mgroupid' => $g_id]);
+    }
+
+    /**
+     * Grouping delete event, update grouping id in block_quizchat_group table
+     *
+     * @param \core\event\group_updated $event
+     */
+    public static function moodle_grouping_deleted(\core\event\grouping_deleted $event) {
+        global $DB;
+        $g_id = $event->objectid;
+        $updated = $DB->set_field('block_quizchat_messages', 'mgroupingid', 0, ['mgroupingid' => $g_id]);
+    }
 }

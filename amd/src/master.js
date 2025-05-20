@@ -32,6 +32,7 @@ import {
     btn_msg_grp_click
 } from 'block_quizchat/instructor';
 
+export const lang_strings = {};
 export var poll_timeout = 10000;
 var poll_timeout_id;
 export var poll_timeout_id_fullscreen;
@@ -107,11 +108,11 @@ var page_reloaded = true;
 var getmsgs_mostrecentmsg_id = 0;
 var most_recent_msg_id = 0;
 
-export let lang_strings = {};
 
 export const quizchat_address_everyone = 0;
 export const quizchat_address_instructors = -1;
 export const quizchat_address_question_group = -2;
+export const quizchat_address_m_group = -3;
 export const quizchat_student_question_id = -1;
 export const quizchat_general_question_id = 0;
 export const allmsgs_id = -1;
@@ -138,6 +139,7 @@ export const int_sessionStorage = (key) => {
     let val = sessionStorage.getItem('moodle_qc_' + quizchat_userid + '_' + quizchatid + '_' + key);
     if(null === val) {
         return 0;
+        //~ return undefined;
     } else if (val == "true") {
         return true;
     }else if (val == "false") {
@@ -267,7 +269,8 @@ export const poll_messages = (quizchatid) => {
                 "langstr_group" : lang_strings['group_txt'],
                 "langstr_attempt" : lang_strings['quiz_attempt_txt'],
                 "langstr_all" : lang_strings['everyone'],
-                "langstr_strftimerecentfull" : lang_strings['strftimerecentfull']
+                "langstr_strftimerecentfull" : lang_strings['strftimerecentfull'],
+                "deleted_langstr" : lang_strings['deleted_langstr']
             }
         }
     ];
@@ -438,7 +441,10 @@ export const update_msg_area = (diff) => {
                 //group messaging
                 if (new_msg[i].receiverid == quizchat_address_question_group) {
                     new_msg_receiver = quizchat_users.find(u => u.id == new_msg[i].receiverid + '/' + new_msg[i].rfullname);
-                } else {
+                } else if (new_msg[i].receiverid == quizchat_address_m_group) {
+                    new_msg_receiver = new_msg[i].rfullname;
+                }
+                else {
                     new_msg_receiver = quizchat_users.find(u => u.id == new_msg[i].receiverid);
                 }
                 card_flavor = new_msg[i].userid === quizchat_userid
@@ -487,8 +493,11 @@ export const update_msg_area = (diff) => {
                             ),
                             $(
                                 '<div class="fullname text-truncate" data-address-type="to"'
-                                + ' title="' + new_msg_receiver.fullname + '">'
-                                + new_msg_receiver.fullname + '</div>'
+                                + ' title="'
+                                + (new_msg[i].receiverid == quizchat_address_m_group ? new_msg_receiver : new_msg_receiver.fullname)
+                                + '">'
+                                + (new_msg[i].receiverid == quizchat_address_m_group ? new_msg_receiver : new_msg_receiver.fullname)
+                                + '</div>'
                             )
                         )
                     ),
@@ -782,29 +791,37 @@ const update_unnotify_timeout = () => {
 };
 
 // setting_poll_timeout to be set in settings.php / admin interface
-export const init = (arg_quizchat,arg_userid, setting_poll_timeout, setting_unnotify_timeout, no_drawer_flag,
-     langstr_obj, fullscreen_flag) => {
-    // The backend has checked for additional browser security
-    // or a SEB config on this quiz
-    no_drawer = no_drawer_flag;
-    full_screen_flag = fullscreen_flag;
-    // User Id is needed for client to ignore their own messages when
-    // Updating notification
-    quizchat_userid = arg_userid;
-    lang_strings = { ...langstr_obj };
-    // Initialize the quizchat_users array
-    init_quizchat_users();
-    const drawer_blocks = $('#theme_boost-drawers-blocks');
-    const obs_config = { attributes: true, attributeFilter: ["class"] };
-    const drawer_blocks_observer = new MutationObserver(drawer_mutation_callback);
-    // Having been checked on the server side, these timeouts are safe
-    poll_timeout = setting_poll_timeout * 1000;
-    unnotify_timeout = setting_unnotify_timeout * 1000;
-    // Drawers do not exist in SEB
-    if (!no_drawer && !full_screen_flag) {
-        drawer_blocks_observer.observe(drawer_blocks[0], obs_config);
-    }
-    quizchatid = arg_quizchat.id;
-    poll_messages(quizchatid);
+export const init = (
+      arg_quizchat,arg_userid, setting_poll_timeout,
+      setting_unnotify_timeout, no_drawer_flag, fullscreen_flag
+    ) => {
+      // Get lang_strings from DOM
+      let langstr_tag = document.getElementById('block_quizchat_langstr');
+      let langstr_json = langstr_tag.innerHTML;
+      let langstr_import = JSON.parse(langstr_json);
+      for(const [key, val] of Object.entries(langstr_import)) {
+        lang_strings[key] = val;
+      }
+      // The backend has checked for additional browser security
+      // or a SEB config on this quiz
+      no_drawer = no_drawer_flag;
+      full_screen_flag = fullscreen_flag;
+      // User Id is needed for client to ignore their own messages when
+      // Updating notification
+      quizchat_userid = arg_userid;
+      // Initialize the quizchat_users array
+      init_quizchat_users();
+      const drawer_blocks = $('#theme_boost-drawers-blocks');
+      const obs_config = { attributes: true, attributeFilter: ["class"] };
+      const drawer_blocks_observer = new MutationObserver(drawer_mutation_callback);
+      // Having been checked on the server side, these timeouts are safe
+      poll_timeout = setting_poll_timeout * 1000;
+      unnotify_timeout = setting_unnotify_timeout * 1000;
+      // Drawers do not exist in SEB
+      if (!no_drawer && !full_screen_flag) {
+          drawer_blocks_observer.observe(drawer_blocks[0], obs_config);
+      }
+      quizchatid = arg_quizchat.id;
+      poll_messages(quizchatid);
 };
 

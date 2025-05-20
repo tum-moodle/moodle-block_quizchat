@@ -48,6 +48,9 @@
         <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="questionattemptid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="mgroupid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="mgroupingid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="gname" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -57,6 +60,8 @@
         <KEY NAME="groupid" TYPE="foreign" FIELDS="groupid" REFTABLE="block_quizchat_group" REFFIELDS="id"/>
         <KEY NAME="questionattemptid" TYPE="foreign" FIELDS="questionattemptid" REFTABLE="question_attempts" REFFIELDS="id"/>
         <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+        <KEY NAME="mgroupid" TYPE="foreign" FIELDS="mgroupid" REFTABLE="groups" REFFIELDS="id"/>
+        <KEY NAME="mgroupingid" TYPE="foreign" FIELDS="mgroupingid" REFTABLE="groupings" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>

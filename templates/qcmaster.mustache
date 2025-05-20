@@ -37,6 +37,9 @@
     }
 }}
 
+<data id="block_quizchat_langstr" style="display:none;">
+  {{{ langstr_json }}}
+</data>
 {{^is_teacher}}
 <div class="container pl-0 pr-0" id="block_quizchat_messages" data-action="block_quizchat/messages">
     <span class="block_quizchat_msg_area_header">0 {{#str}} notification_new_msg_plural, block_quizchat{{/str}}</span>
@@ -66,6 +69,8 @@
 {{#is_teacher}}
 {{^fullscreen}}
 <div class="container pl-0 pr-0" id="block_quizchat_messages" data-action="block_quizchat/messages">
+    {{#group_access}}
+    {{{groups_menu}}}
     <span class="block_quizchat_msg_area_header">0 {{#str}} notification_new_msg_plural, block_quizchat{{/str}}</span>
     <div class="block_quizchat_msg_area_body">
     </div>
@@ -86,8 +91,14 @@
                     }
         ]);
     </script>
+    {{/group_access}}
+    {{^group_access}}
+        {{{groups_menu}}}
+    {{/group_access}}
 </div>
+{{#group_access}}
 {{> block_quizchat/instructorblock }}
+{{/group_access}}
 {{/fullscreen}}
 
 {{#fullscreen}}
@@ -96,6 +107,7 @@
         <div class="row h-100 no-gutters">
             <div class="col-3 d-flex flex-column conversationcontainer">
                 <div class="border-right h-100">
+                    {{{groups_menu}}}
                     <div class="panel-header-container">
                         <div class="border-bottom p-1 px-sm-2" data-in-panel="true" data-region="view-overview" data-from-panel="false" data-init="true">
                             <div class="text-left mt-sm-3">

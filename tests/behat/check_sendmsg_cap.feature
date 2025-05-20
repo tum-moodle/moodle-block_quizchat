@@ -56,7 +56,7 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
     And I am on the "Quiz 1" "mod_quiz > View" page
     And I wait until the page is ready
     Then I should not see "Students messages are deactivated."
-    And "Help with deactivated students messages" "icon" should not exist
+    And "permissions_help_icon" "link" should not exist
     And I log out
     And I close all opened windows
     And I log in as "student1"
@@ -84,18 +84,12 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
     And I wait until the page is ready
     And I am on the "Quiz 1" "mod_quiz > View" page
     Then I should see "Students messages are deactivated."
-    And "Help with deactivated students messages" "icon" should exist
+    And "permissions_help_icon" "link" should exist
     And I change window size to "large"
-    And I click on "Help with deactivated students messages" "icon"
     And I wait until the page is ready
-    #And I pause the test until return is pressed
     And I wait "2" seconds
-    And I click on "//a[@id='rolepermission_link']" "xpath_element"
-    And I wait "2" seconds
-    #And I pause the test until return is pressed
-    And I switch to "rolepermission_link" window
-    #And I start watching to see if a new page loads
-    #And I switch to a second window
+    And I click on "permissions_help_icon" "link"
+    And I click on "rolepermissions_link" "link"
     And I wait until the page is ready
     Then I should see "Permissions in Block: Quizchat"
     And I close all opened windows
