@@ -925,14 +925,14 @@ const update_conversation_header = (id, groupFlag) => {
                             'data-user-id="'+element.userid +
                             '" title="'+lang_strings[element.state]+'"></div>')+'</span>'+
                         '</div>'+
-                        '<div class="w-100 text-truncate ml-2">'+
+                        '<div class="w-100 text-truncate qc-ml-2">'+
                             '<div class="d-flex">'+
                                 '<strong class="m-0 text-truncate">'+
                                 (id==allmsgs_id?'All messages':(groupFlag?element.group_name:element.fullname))+
                                 '</strong>'+
                             '</div>'+
                             //All messages description
-                            '<p id="written-header-state" class="m-0 font-weight-light text-truncate">'+
+                            '<p id="written-header-state" class="m-0 qc-font-weight-light text-truncate">'+
                             (id==allmsgs_id?' ':
                             //Group messages description
                             (groupFlag?' ':lang_strings[element.state]))+
@@ -984,7 +984,7 @@ export const btn_msg_me_click = () => {
                     '<span class="contact-status-sidemenu icon-size-2 " '+'data-user-id="'+user.userid+'">'+
                     '<div class="statecircle-base '+user.state+'" title="'+lang_strings[user.state]+'"></div>'+
                     '</span>'+
-                    '<div class="w-100 text-truncate ml-2 my-2">'+
+                    '<div class="w-100 text-truncate qc-ml-2 my-2">'+
                         '<div class="d-flex">'+
                             '<strong class="m-0 text-truncate">'+user.fullname+'</strong>'+
                             '<span class="hidden" data-region="contact-icon-blocked">'+
@@ -995,7 +995,7 @@ export const btn_msg_me_click = () => {
                                 '<i class="icon fa fa-microphone-slash fa-fw " aria-hidden="true"></i>'+
                             '</span>'+
                         '</div>'+
-                        '<p class="m-0 font-weight-light text-truncate last-message" data-region="last-message">'
+                        '<p class="m-0 qc-font-weight-light text-truncate last-message" data-region="last-message">'
                         +(user_last_msg[0].userid == quizchat_userid?
                             lang_strings['sidemenu_you']+': <span>'+user_last_msg[0].message+'</span>':
                         '<span>'+user_last_msg[0].message+'</span>')
@@ -1012,7 +1012,7 @@ export const btn_msg_me_click = () => {
                                 + (msgs_count > 0 ? String(msgs_count) :'')
                                 +'</span>'+
                             '</span>'+
-                            '<div class="text-muted ml-auto">'+
+                            '<div class="text-muted qc-ml-auto">'+
                                 '<span class="dir-rtl-hide">'+
                                     '<i class="icon fa fa-chevron-right fa-fw " aria-hidden="true"></i>'+
                                 '</span>'+
@@ -1100,7 +1100,7 @@ export const btn_msg_grp_click = () => {
             +'alt="'+group.group_name+'" aria-hidden="true" style="height: 38px">'+
                     '<span class="contact-status icon-size-2 ">'+
                     '</span>'+
-                    '<div class="w-100 text-truncate ml-2 my-2">'+
+                    '<div class="w-100 text-truncate qc-ml-2 my-2">'+
                         '<div class="d-flex">'+
                             '<strong class="m-0 text-truncate">'+group.group_name+'</strong>'+
                             '<span class="hidden" data-region="contact-icon-blocked">'+
@@ -1111,7 +1111,7 @@ export const btn_msg_grp_click = () => {
                                 '<i class="icon fa fa-microphone-slash fa-fw " aria-hidden="true"></i>'+
                             '</span>'+
                         '</div>'+
-                        '<p class="m-0 font-weight-light text-truncate last-message" data-region="last-message">'
+                        '<p class="m-0 qc-font-weight-light text-truncate last-message" data-region="last-message">'
                         +(group_last_msg[0].userid == quizchat_userid?
                             lang_strings['sidemenu_you']+': <span>'+group_last_msg[0].message+'</span>':
                         '<span>'+group_last_msg[0].message+'</span>')
@@ -1129,7 +1129,7 @@ export const btn_msg_grp_click = () => {
                                 + (msgs_count > 0 ? String(msgs_count) :'')
                                 +'</span>'+
                             '</span>'+
-                            '<div class="text-muted ml-auto">'+
+                            '<div class="text-muted qc-ml-auto">'+
                                 '<span class="dir-rtl-hide">'+
                                     '<i class="icon fa fa-chevron-right fa-fw " aria-hidden="true"></i>'+
                                 '</span>'+

@@ -57,42 +57,25 @@ Feature: MathJax typesetting
     And I am on the "Quiz 1" "mod_quiz > View" page
     And I wait until the page is ready
     Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And ".toast-wrapper" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
+    And ".MathJax" "css_element" should exist in the ".block_quizchat_msg_area_body" "css_element"
+    And ".MathJax" "css_element" should exist in the ".toast-wrapper" "css_element"
 
   @javascript @mathjax_typesetting @typeset_card-body @teacher @mod_quiz-pagetypes
-  Scenario: MathJax typesetting - When I have sent a message with MathJax
+  Scenario Outline: MathJax typesetting - When I have sent a message with MathJax
       content within the defined delimiters it should be typeset and rendered
     And I log in as "teacher1"
-    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I am on the <qpage> page
     And I wait until the page is ready
     Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > Edit" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > Group overrides" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > User overrides" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > Responses report" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > Manual grading report" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1" "mod_quiz > Statistics report" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
-    And I am on the "Quiz 1 > student1 > 1" "mod_quiz > Attempt review" page
-    And I wait until the page is ready
-    Then I should not see "$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$"
-    And ".block_quizchat_msg_area_body" "css_element" should contain "x = {-b \pm \sqrt{b^2-4ac} \over 2a}." text
+    And ".MathJax" "css_element" should exist in the ".block_quizchat_msg_area_body" "css_element"
+
+    Examples:
+      | qpage                                               |
+      | "Quiz 1" "mod_quiz > View"                          |
+      | "Quiz 1" "mod_quiz > Edit"                          | 
+      | "Quiz 1" "mod_quiz > Group overrides"               |
+      | "Quiz 1" "mod_quiz > User overrides"                |
+      | "Quiz 1" "mod_quiz > Responses report"              |
+      | "Quiz 1" "mod_quiz > Manual grading report"         |
+      | "Quiz 1" "mod_quiz > Statistics report"             |
+      | "Quiz 1 > student1 > 1" "mod_quiz > Attempt review" |

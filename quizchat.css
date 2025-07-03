@@ -76,6 +76,8 @@ input:checked + .slider:before {
 
 #block_quizchat_messages {
     max-width: 100%;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 .block_quizchat_msg_el {
@@ -129,11 +131,13 @@ input:checked + .slider:before {
     padding:0px 1px 0px 2px;
     grid-column: 3 / 4;
     grid-row: 1 / 2;
+    text-align: right !important;
 }
 .block_quizchat_msg_el .msg-header .fullname.to {
     padding:0px 1px 0px 1px;
     grid-column: 3 / 5;
     grid-row: 2 / 3;
+    text-align: right !important;
 }
 
 .block_quizchat_msg_el .card-header .row {
@@ -149,11 +153,13 @@ input:checked + .slider:before {
     padding:0px 1px 0px 2px;
     grid-column: 2 / 3;
     grid-row: 1 / 2;
+    text-align: right;
 }
 .msg-header .tofrom.to {
     padding:0px 1px 0px 2px;
     grid-column: 2 / 3;
     grid-row: 2 / 3;
+    text-align: right;
 }
 
 .block_quizchat_msg_el .card-header .users {
@@ -166,7 +172,6 @@ input:checked + .slider:before {
     padding-right:3px;
     padding-top:1px;
     padding-bottom:1px;
-    overflow-x: auto;
 }
 
 
@@ -187,6 +192,7 @@ input:checked + .slider:before {
     padding: 0px 2px 0px 0px;
     text-align:left;
     white-space:nowrap;
+    text-align: right !important;
 }
 
 .block_quizchat_msg_area_body {
@@ -202,6 +208,7 @@ label#id_block_quizchat_questions_select_label {
     margin-right:0px;
     box-sizing:border-box;
     word-break: normal !important;
+    white-space: nowrap;
 }
 
 #block_quizchat_instructor_form .col-form-label,
@@ -333,12 +340,14 @@ label#id_block_quizchat_questions_select_label {
 #block_quizchat_input_instructor_send {
     box-sizing:border-box;
     max-width:100%;
+    margin-left: 0 !important;
 }
 
 #block_quizchat_button_instructor_send{
     box-sizing:border-box;
     margin-top: 6px;
     z-index: unset;
+    margin-right: 0 !important;
 }
 
 #block_quizchat_button_student_send{
@@ -512,4 +521,36 @@ a[id^="questionref_link_"]:hover {
 #fs_bg .groupselector .custom-select,
 .block-content .groupselector .custom-select {
     width: 100%;
+}
+
+.qc-ml-2 {
+    margin-left: 0.5rem !important;
+}
+.qc-ml-auto {
+    margin-left: auto !important;
+}
+.qc-text-left {
+    text-align: left !important;
+}
+.qc-border-right {
+    border-right: 1px solid #dee2e6 !important;
+}
+.qc-font-weight-light {
+    font-weight: 300 !important;
+}
+.qc-font-weight-bold {
+    font-weight: 700 !important;
+}
+.qc-no-gutters {
+    margin-right: 0;
+    margin-left: 0;
+}
+.qc-ml-1 {
+    margin-left: 0.25rem !important;
+}
+.qc-font-weight-bolder {
+  font-weight: bolder !important;
+}
+.qc-font-weight-normal {
+  font-weight: 400 !important;
 }

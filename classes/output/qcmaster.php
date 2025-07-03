@@ -66,6 +66,12 @@ class qcmaster implements renderable, templatable {
         global $USER, $DB, $PAGE, $OUTPUT, $CFG;
         require_once($CFG->libdir .'/grouplib.php');
         require_once($CFG->dirroot . '/group/lib.php');
+        require("{$CFG->dirroot}/version.php");
+        require_once($CFG->libdir . '/filterlib.php');
+        filter_set_global_state('mathjaxloader', TEXTFILTER_ON);
+        filter_set_applies_to_strings('mathjaxloader', 1);
+        $mood_5_ver = 2025041400;
+        $curr_moodle_ver = $version;
         $data = new \stdClass();
         $quiz = $DB->get_record('quiz', array('id' => $PAGE->cm->instance));
         $quizid = $quiz->id;
@@ -87,8 +93,10 @@ class qcmaster implements renderable, templatable {
         $poll_timeout_setting = get_config('block_quizchat', 'quizchat_poll_timeout');
         $unnotify_timeout_setting = get_config('block_quizchat', 'unnotify_timeout');
         $data->quizchat_msg_length = get_config('block_quizchat', 'quizchat_msg_length');
-        $data->mathjax_url = get_config('filter_mathjaxloader', 'httpsurl');
-        $data->mathjax_config = get_config('filter_mathjaxloader', 'mathjaxconfig');
+        $data->mathjax_url = ($curr_moodle_ver >= $mood_5_ver ? '' : get_config('filter_mathjaxloader', 'httpsurl'));
+        //$data->mathjax_url = get_config('filter_mathjaxloader', 'httpsurl');
+        $data->mathjax_config = ($curr_moodle_ver >= $mood_5_ver ? '' : get_config('filter_mathjaxloader', 'mathjaxconfig'));
+        $data->data_bs = ($curr_moodle_ver >= $mood_5_ver ? 'data-bs' : 'data');
         $msg_len_setting = $data->quizchat_msg_length;
         //get language strings
         $txt_validation_msg = get_string('txtinput_required', 'block_quizchat');
@@ -219,7 +227,6 @@ class qcmaster implements renderable, templatable {
             }
         }
         $PAGE->requires->css('/blocks/quizchat/quizchat.css');
-
         return $data;
     }
 }

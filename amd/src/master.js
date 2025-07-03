@@ -450,7 +450,7 @@ export const update_msg_area = (diff) => {
                 card_flavor = new_msg[i].userid === quizchat_userid
                     ? 'bg-secondary'
                     : 'bg-light border border-secondary'
-                        + (last_received_msg_id < new_msg[i].id ? ' font-weight-bolder' : '');
+                        + (last_received_msg_id < new_msg[i].id ? ' qc-font-weight-bolder' : '');
                 new_msg_el = $('<div class="card block_quizchat_msg_el ' + card_flavor
                 + ' mb-1" data-msg-id="' + new_msg[i].id + '"></div>');
                 msg_time = new Date(new_msg[i].timestamp * 1000);
@@ -475,7 +475,7 @@ export const update_msg_area = (diff) => {
                             $('<div class="block_quizchat_user_icon">')
                             .append(profimg),
                             $(
-                                '<div class="text-right tofrom from">'
+                                '<div class="tofrom from">'
                                 + lang_strings['from'] + ':</div>'
                             ),
                             $(
@@ -484,11 +484,11 @@ export const update_msg_area = (diff) => {
                                 + new_msg_user.fullname + '</div>'
                             ),
                             $(
-                                '<div class="timestamp text-right">'
+                                '<div class="timestamp">'
                                 + msg_time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + '</div>'
                             ),
                             $(
-                                '<div class="text-right tofrom to">'
+                                '<div class="tofrom to">'
                                 + lang_strings['to'] + ':</div>'
                             ),
                             $(
@@ -505,7 +505,7 @@ export const update_msg_area = (diff) => {
                         '<div class="card-body"><div class="question-info"><b>'
                         + lang_strings['student_question_select'] + ' ' + new_msg[i].questiontxt
                         + new_msg[i].quizattempt +'</b></div>'
-                        + '<div class="msg-txt">' + new_msg[i].message +'</div>'
+                        + '<div class="msg-txt filter_mathjaxloader_equation">' + new_msg[i].message +'</div>'
                         + '</div>'
                     )
                 );
@@ -518,7 +518,7 @@ export const update_msg_area = (diff) => {
                 $('#block_quizchat_messages > .block_quizchat_msg_area_body').append(new_msg_el);
                 //trigger MathJax to render equations within the element with the class "card-body"
                 if (i == new_msg.length-1){
-                    cardbodyMathJax('card-body');
+                    cardbodyMathJax('msg-txt');//msg-txt card-body
                     // Scroll to bottom of msg area
                     $('.block_quizchat_msg_area_body').scrollTop($('.block_quizchat_msg_area_body')[0].scrollHeight);
                 }
@@ -589,7 +589,7 @@ export const isToday = (date) => {
 const unnotify = () => {
     write_sessionStorage('total_unread_msg', 0);
     $('.toast').remove();
-    $('.block_quizchat_msg_el.font-weight-bolder').removeClass('font-weight-bolder');
+    $('.block_quizchat_msg_el.qc-font-weight-bolder').removeClass('qc-font-weight-bolder');
     if(full_screen_flag)
     {
         allmsgs_count_notf();
@@ -651,7 +651,7 @@ const update_toast_style = (drawer) => {
         'max-width': toast_width
     });
     // Make the small subtitle with the 'from' field truncate too long names
-    $('.toast .toast-subtitle.ml-auto.small').css({
+    $('.toast .toast-subtitle.qc-ml-auto.small').css({
         'white-space': 'nowrap',
         'max-width': '200px',
         'overflow': 'hidden',

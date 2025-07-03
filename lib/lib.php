@@ -1458,7 +1458,7 @@ function get_last_inprogress_quizattempt_id($userid, $quizid)
                 FROM {quiz_attempts} qa
                 WHERE qa.quiz = ".$quizid
                 ." AND qa.userid = ".$userid
-                ." AND qa.state = '".quiz_attempt::IN_PROGRESS
+                ." AND qa.state = '".\mod_quiz\quiz_attempt::IN_PROGRESS
                 ."' AND qa.timestart = (
                     SELECT MAX(qa_max.timestart)
                     FROM {quiz_attempts} qa_max

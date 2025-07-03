@@ -43,7 +43,7 @@ class block_quizchat extends block_base
 
     public function get_content()
     {
-        global $DB,$PAGE, $USER;
+        global $DB,$PAGE, $USER, $CFG;
         $cm = $PAGE->cm;
         // from /mod/quiz/lib.php:
         if(!$quiz_info = $DB->get_record('quiz', ['id' => $cm->instance], '*')){

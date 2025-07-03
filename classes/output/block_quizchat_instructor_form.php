@@ -54,7 +54,7 @@ class block_quizchat_instructor_form extends \moodleform
             $mform->createElement(
                 'html', '
                 <div class="input-group mb-3">
-                    <input type="text" required name="block_quizchat_input_instructor_send" id="block_quizchat_input_instructor_send" class="form-control ml-0 mr-0" placeholder="'
+                    <input type="text" required name="block_quizchat_input_instructor_send" id="block_quizchat_input_instructor_send" class="form-control" placeholder="'
                 . get_string('placeholder_instructor_send_input', 'block_quizchat')
                 . '" aria-label="'
                 . get_string('placeholder_instructor_send_input', 'block_quizchat')
@@ -62,7 +62,7 @@ class block_quizchat_instructor_form extends \moodleform
                 . get_string('txtinput_required', 'block_quizchat')
                 . '" aria-describedby="block_quizchat_button_instructor_send">
                             <div class="input-group-append">
-                                <button name="block_quizchat_button_instructor_send" class="btn btn-primary mt-0 mr-0 mb-0" type="submit" id="block_quizchat_button_instructor_send">'
+                                <button name="block_quizchat_button_instructor_send" class="btn btn-primary mt-0 mb-0" type="submit" id="block_quizchat_button_instructor_send">'
                 . get_string('caption_instructor_send_submit', 'block_quizchat')
                 . '</button>
                             </div>      
