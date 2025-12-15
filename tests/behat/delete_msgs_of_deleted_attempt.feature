@@ -10,9 +10,6 @@ Feature: Delete messages of deleted attempt
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C1     | q1       | 1         |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | q1        | mod-quiz-*      | side-pre      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher2 | Teacher   | 2        | teacher2@example.com |
@@ -26,6 +23,15 @@ Feature: Delete messages of deleted attempt
     And the following "question categories" exist:
       | contextlevel | reference | name           |
       | Course       | C1        | Test questions |
+    And I log in as "teacher1"
+    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I close all opened windows
+    And I log out
   @javascript
   Scenario: student sends and teacher receives message with random question reference
     When the following "questions" exist:

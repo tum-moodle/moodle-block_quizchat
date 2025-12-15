@@ -57,7 +57,10 @@ class provider implements
             'message'    => 'privacy:metadata:block_quizchat_messages:message',
             'timestamp'  => 'privacy:metadata:block_quizchat_messages:timestamp',
             'questionattemptid' => 'privacy:metadata:block_quizchat_messages:questionattemptid',
-            'questionid' => 'privacy:metadata:block_quizchat_messages:questionid'
+            'questionid' => 'privacy:metadata:block_quizchat_messages:questionid',
+            'mgroupid' => 'privacy:metadata:block_quizchat_messages:mgroupid',
+            'mgroupingid' => 'privacy:metadata:block_quizchat_messages:mgroupingid',
+            'gname' => 'privacy:metadata:block_quizchat_messages:gname'
         ], 'privacy:metadata:block_quizchat_messages');
 
         return $collection;
@@ -135,8 +138,15 @@ class provider implements
             'contextid' => $context->id,
             'userid'    => $USER->id
         ];
-
-        $sql = "SELECT DISTINCT qcm.id,  qcg.name as receivergroup,
+        $deleted_langstr = get_string('deleted_langstr', 'block_quizchat');
+        $sql = "SELECT DISTINCT qcm.id,  
+                CASE 
+                    WHEN qcm.groupid IS NULL AND (qcm.mgroupid = 0 OR qcm.mgroupingid = 0) THEN 
+                            CONCAT(qcm.gname, ' (".$deleted_langstr.")')
+                    WHEN qcm.groupid IS NULL AND (qcm.mgroupid != 0 OR qcm.mgroupingid != 0) THEN 
+                            qcm.gname
+                    WHEN qcm.groupid IS NOT NULL AND qcm.groupid != 0 THEN qcg.name 
+                END as receivergroup,
                 	u.username, qcm.message, qcm.timestamp
                 FROM {block_quizchat} qc
                 JOIN {block_quizchat_messages} qcm ON qcm.quizchatid = qc.id

@@ -11,9 +11,6 @@ Feature: Click to respond.
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C2     | q1       | 1         |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | q1        | mod-quiz-*      | side-pre      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher2 | Teacher2   | 2        | teacher2@example.com |
@@ -37,6 +34,15 @@ Feature: Click to respond.
       | question                | page |
       | TF1                     | 1    |
       | TF2                     | 2    |
+    And I log in as "teacher1"
+    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I close all opened windows
+    And I log out
     And I log in as "teacher2"
     And I am on the "Quiz 1" "mod_quiz > View" page
     And I press "Preview quiz"

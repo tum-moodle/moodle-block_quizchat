@@ -32,15 +32,12 @@ Feature: Add a quizchat block to quiz
       | question | page |
       | TF1      | 1    |
     And I am on "Course 1" course homepage
-
+  @javascript
   Scenario: Add quizchat block to quiz activity - user with capability
     When I log in as "teacher1"
     And I am on the "Quiz 1" "mod_quiz > View" page
     And I turn editing mode on
-    And I add the "Quizchat" block
-    And I configure the "Quizchat" block
-    And I set the following fields to these values:
-      | Display on page types | Any quiz module page |
+    And I add the "Quizchat..." block
     And I press "Save changes"
     Then I should see "Quizchat" in the "Quizchat" "block"
 

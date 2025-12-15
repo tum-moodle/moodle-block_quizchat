@@ -11,9 +11,6 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C2     | q1       | 1         |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | q1        | mod-quiz-*      | side-pre      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher2 | Teacher   | 2        | teacher2@example.com |
@@ -48,8 +45,13 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
   Scenario: messages can be sent when permission is allowed
     Given I log in as "teacher1"
     And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
     And I turn editing mode on
-    And I click on "Actions menu" "icon" in the "Quizchat" "block"
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I click on "[id^='action-menu-toggle']" "css_element" in the ".block_quizchat" "css_element"
     And I follow "Permissions"
     And I wait until the page is ready
     Then "//*[contains(@id, 'permissions')]//tr[th[contains(., 'block/quizchat:sendmsg')]]//td[contains(@class, 'allowedroles') and contains(., 'Student')]" "xpath_element" should exist
@@ -73,8 +75,13 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
   Scenario: messages can not be sent when permission is restricted
     Given I log in as "teacher1"
     And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
     And I turn editing mode on
-    And I click on "Actions menu" "icon" in the "Quizchat" "block"
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I click on "[id^='action-menu-toggle']" "css_element" in the ".block_quizchat" "css_element"
     And I follow "Permissions"
     And I wait until the page is ready
     And I click on "Delete Student role" "link" in the "block/quizchat:sendmsg" "table_row"

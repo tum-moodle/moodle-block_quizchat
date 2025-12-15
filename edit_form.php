@@ -35,6 +35,69 @@ class block_quizchat_edit_form extends block_edit_form {
         $mform->addElement('text', 'config_title', get_string('blocktitle', 'block_quizchat'));
         $mform->setDefault('config_title', $titletxt);
         $mform->setType('config_title', PARAM_TEXT);
+        // Define the checkbox.
+        $enable = $mform->createElement(
+            'advcheckbox',
+            'config_enableopenbefore',
+            '',
+            get_string('enableopenbefore', 'block_quizchat')
+        );
+
+        // Define the minutes input.
+        $minutes = $mform->createElement(
+            'duration',
+            'config_openbefore',
+            '',
+            ['optional' => false,'units' => [MINSECS], // only minutes
+        'defaultunit' => MINSECS] // optional size.
+        );
+        /* $minutes = $mform->createElement(
+            'text',
+            'config_openbefore',
+            '',
+            ['size' => 5]// optional size.
+        ); */
+
+        // Types & defaults.
+        //$mform->addRule('config_openbefore[number]', 'must be positive', 'positiveint', null, 'client');
+       // $mform->setDefault('config_openbefore[timeunit]', 86400);
+        //$mform->setType('config_openbefore', PARAM_INT);
+        $mform->hideIf('config_openbefore[timeunit]', 'config_openbefore[timeunit]','eq', '1');
+        $mform->setDefault('config_enableopenbefore', 0); // unchecked by default.
+        //$mform->setDefault('config_openbefore', 20);
+        $mform->setDefault('config_openbefore', 20 * MINSECS);
+
+        // Group: Checkbox + Minutes.
+        $group = [];
+        $group[] = $enable;
+        $group[] = $minutes;
+
+        $mform->addGroup(
+            $group,
+            'openbeforegroup',
+            get_string('openbefore', 'block_quizchat'),
+            ' ', // separator between elements in group
+            false // no repeated elements.
+        );
+
+        
+
+         
+
+        // Help buttons.
+        $mform->addHelpButton('openbeforegroup', 'openbefore', 'block_quizchat');
+
+        // Disable minutes if checkbox not checked.
+        $mform->disabledIf('config_openbefore', 'config_enableopenbefore', 'notchecked');
+    }
+
+     /**
+     * Display the configuration form when block is being added to the page
+     *
+     * @return bool
+     */
+    public static function display_form_when_adding(): bool {
+        return true;
     }
 
 }

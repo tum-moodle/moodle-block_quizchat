@@ -18,6 +18,8 @@ Students are allowed to chat only with the instructors. It also comes with built
 
 - Support for Separate Groups and Groupings. Quizchat block plugin fully supports Moodle’s separate groups mode and groupings. In separate groups mode, instructors can see and send messages within their own group, maintaining privacy between groups. Additionally, messages can be filtered by the selected group or grouping, and users can send messages targeted specifically to their own group or a defined grouping. If a group or grouping is deleted, existing messages remain visible and are clearly marked as (deleted) next to the receiver’s name for clarity.
 
+- Configurable time settings allow editting teachers and admins to define when Quizchat becomes available. Make sure the quiz’s “Open the quiz,” “Close the quiz,” or “Time limit” settings are configured in the quiz settings page. When these are defined, Quizchat will become available automatically based on your configured time (e.g., 20 minutes before the quiz starts). If the quiz timing settings are not defined, Quizchat will remain unavailable until a student starts an attempt.
+
 # Compatibility
 This block is compatible with Moodle versions 4.3 to 5.0 and is also compatible with PHP versions 8.0 to 8.3 (please check the respective compatibility for your Moodle version). 
 

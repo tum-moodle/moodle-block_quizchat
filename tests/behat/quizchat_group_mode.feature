@@ -17,6 +17,7 @@ Feature: Viewing Quizchat messages by group
     And the following "groupings" exist:
       | name       | course | idnumber |
       | Grouping 1 | C1     | GG1      |
+      | Grouping 2 | C1     | GG2      |
     And the following "grouping groups" exist:
       | grouping | group |
       | GG1      | G1    |
@@ -48,12 +49,8 @@ Feature: Viewing Quizchat messages by group
       | activity | name    | intro                     | course | idnumber | groupmode | showblocks | grouping |
       | quiz     | quiz 1  | quiz with separate groups | C1     | quiz1    | 1         |    1       |          |
       | quiz     | quiz 2  | quiz without groups       | C1     | quiz2    | 0         |    1       |          |
-      | quiz     | quiz 3  | quiz without grouping     | C1     | quiz3    | 1         |    1       |   GG1    |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | quiz1        | mod-quiz-*      | side-pre      |
-      | quizchat | Activity module | quiz2        | mod-quiz-*      | side-pre      |
-      | quizchat | Activity module | quiz3        | mod-quiz-*      | side-pre      |
+      | quiz     | quiz 3  | quiz with grouping        | C1     | quiz3    | 1         |    1       |   GG1    |
+      | quiz     | quiz 4  | quiz with empty grouping  | C1     | quiz4    | 1         |    1       |   GG2    |
     And the following "question categories" exist:
       | contextlevel | reference | name           |
       | Course       | C1        | Test questions |
@@ -70,6 +67,33 @@ Feature: Viewing Quizchat messages by group
     And quiz "quiz 3" contains the following questions:
       | question | page |
       | TF1      | 1    |
+    And quiz "quiz 4" contains the following questions:
+      | question | page |
+      | TF1      | 1    |
+    And I log in as "teacher1"
+    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I am on the "Quiz 2" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I am on the "Quiz 3" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I am on the "Quiz 4" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I close all opened windows
+    And I log out
 
   @javascript
   Scenario Outline: Groups selector visibility in block view in different quiz pages with and without group mode
@@ -225,3 +249,31 @@ Feature: Viewing Quizchat messages by group
     And "Group 1 (deleted)" "text" should exist in the ".msg-header" "css_element"
     And I am on the "quiz 1" "mod_quiz > View" page logged in as "user1"
     And I should not see "This is a G1 message"
+
+@javascript
+  Scenario: Validate everyone message delivery in an empty grouping
+    Given I am on the "quiz 4" "quiz activity editing" page logged in as teacher1
+    And I set the following fields to these values:
+      | Access restrictions | Grouping: Grouping 2 |
+    And I press "Save and display"
+    And I set the field "block_quizchat_input_instructor_send" to "This is a GG2 message"
+    And I press "Send"
+    And I wait for 2 seconds
+    Then I should see "This is a GG2 message"
+    And I expand the "Send message to:" autocomplete
+    And I wait for 4 seconds
+    Then I should not see "No suggestions"
+    And I am on the "quiz 4" "mod_quiz > View" page logged in as "user5"
+    Then I should see "Not available unless: You belong to a group in Grouping 2"
+    And I should not see "This is a GG2 message"
+    And I am on the "Course 1" "groupings" page logged in as "teacher1"
+    And I click on "Show groups in grouping" "link" in the "Grouping 2" "table_row"
+    And I set the field "addselect" to "Group 4"
+    And I press "Add"
+    And I press "Back to groupings"
+    And user "user5" has started an attempt at quiz "quiz 4"
+    And I log in as "user5"
+    And I am on the "quiz 4" "mod_quiz > View" page
+    And I wait for 5 seconds
+    Then I should see "This is a GG2 message"
+    And "Grouping 2" "text" should exist in the ".msg-header" "css_element"

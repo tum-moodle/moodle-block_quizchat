@@ -72,6 +72,19 @@ class block_quizchat extends block_base
             $data->parentcontextid = $PAGE->context->id;
             $data->contextid = $this->context->id;
             $data->instanceid = $this->instance->id;
+            //set the default value of pagetypepattern to be mod-quiz-*
+            if ($cm && $cm->course != 1) {
+                $block_instance = $DB->get_record('block_instances', array(
+                    'blockname' => 'quizchat',
+                    'parentcontextid' => $PAGE->context->id
+                ));
+                
+                // If an instance already exists, update the pagetypepattern
+                if ($block_instance) {
+                    $block_instance->pagetypepattern = 'mod-quiz-*';
+                    $updated = $DB->update_record('block_instances', $block_instance);
+                }
+            }
             quizchat_add_instance($data);
         }
 

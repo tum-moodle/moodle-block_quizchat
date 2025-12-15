@@ -62,9 +62,17 @@
         {{/sendmsgcap}}
         {{/enableblock}}
         {{^enableblock}}
+        {{^openduration}}
         <form id="block_quizchat_student_send">
             <small class="block_quizchat_student_info">
         <span id="available_after_attempt">{{#pix}} i/info, core, Info {{/pix}}{{#str}} available_after_attempt, block_quizchat{{/str}}</span>
         </small></form>
+        {{/openduration}}
+        {{#openduration}}
+        <form id="block_quizchat_student_send">
+            <small class="block_quizchat_student_info">
+        <span id="available_after_duration">{{#pix}} i/info, core, Info {{/pix}}{{#str}} available_after_duration_1, block_quizchat{{/str}}{{openduration}}{{#str}} available_after_duration_2, block_quizchat{{/str}}</span>
+        </small></form>
+        {{/openduration}}
         {{/enableblock}}
 </div>

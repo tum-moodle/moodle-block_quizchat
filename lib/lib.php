@@ -179,87 +179,112 @@ function get_usersdata($quizid, $searchText, $questionid, $general_txt)
 
     // Get enrolled and group-allowed user IDs using helper function
     $ids = get_group_filtered_user_ids($quizid);
-    $grp_enabled = is_quiz_group_access_enabled(intVal($quizchat->cmid), intVal($quizchat->course));
+    $quizobj = \mod_quiz\quiz_settings::create_for_cmid(intVal($quizchat->cmid));
+    $cm = $quizobj->get_cm();
+    $groupmode = groups_get_activity_groupmode($cm);
+    $context = $quizobj->get_context();
+    $aag = has_capability('moodle/site:accessallgroups', $context);
+    //get grouping id if exist
+    $ggid = get_grouping_id(intVal($quizchat->cmid));
+    $allowedgroups = ($groupmode == VISIBLEGROUPS || $aag)
+        ? groups_get_all_groups($cm->course, 0, $ggid, 'g.*', false, true)
+        : groups_get_all_groups($cm->course, $USER->id, $ggid, 'g.*', false, true);
+    $activegroup = groups_get_activity_group($cm, true, $allowedgroups);
+    if((!empty($ids) && $groupmode) || !$groupmode || (!$activegroup && $groupmode)) {
+        $grp_enabled = is_quiz_group_access_enabled(intVal($quizchat->cmid), intVal($quizchat->course));
 
-    if ($questionid != QUIZCHAT_GENERAL_QUESTION_ID) {
-        // If a specific question is selected, get latest attempt per user for that question
-        $participants_query = "SELECT * FROM (
-            SELECT qa.userid as id,
+    $block_config_ar = ((array) unserialize_object(base64_decode($DB->get_record('block_instances', array('id' => $quizchat->instanceid))->configdata)));
+    $enableopenbefore = $block_config_ar['enableopenbefore'];
+    $openbefore = !empty($block_config_ar['openbefore']) ? (int)$block_config_ar['openbefore']/ MINSECS : 0;
+    $quiz = $DB->get_record('quiz', ['id' => $quizchat->quiz], '*', MUST_EXIST);
+    $quizopentime = $quiz->timeopen;
+    $quizclosetime = (int)$quiz->timeclose > 0 ? (int)$quiz->timeclose : (int)$quizopentime + ((int)$quiz->timelimit);
+    $chattimeopen = null;
+    if ($enableopenbefore == "1" && $quizopentime) {
+        $chattimeopen = (int)$quizopentime - ((int)$openbefore * 60);
+    }
+        if ($questionid != QUIZCHAT_GENERAL_QUESTION_ID) {
+            // If a specific question is selected, get latest attempt per user for that question
+            $participants_query = "SELECT * FROM (
+                SELECT qa.userid as id,
+                        u.firstname,
+                        u.lastname,
+                        CONCAT(u.lastname, ' ', u.firstname) AS fullname,
+                        CASE
+                            WHEN u.deleted = 1 THEN 'deleted' 
+                            WHEN u.suspended = 1 THEN 'suspended'
+                            ELSE qa.state
+                        END AS state, ques_a.questionid, q.name as questionname
+                FROM {quiz_attempts} qa
+                JOIN {question_attempts} ques_a
+                ON qa.uniqueid = ques_a.questionusageid
+                JOIN {question} q
+                ON q.id = ques_a.questionid
+                JOIN {user} u 
+                ON qa.userid = u.id
+                WHERE qa.quiz = ".$quizid.($grp_enabled?" AND qa.userid IN (". $ids.") ":" ").
+                "AND qa.timestart = (
+                    SELECT MAX(qa_max.timestart)
+                    FROM {quiz_attempts} qa_max
+                WHERE qa_max.quiz = qa.quiz"
+                .(($enableopenbefore == "1" && $quizopentime)?" AND qa_max.timestart >= " . $chattimeopen . " AND qa_max.timefinish <= " . $quizclosetime  : "").
+                " AND qa_max.userid = qa.userid".($grp_enabled ?" AND qa_max.userid IN (".$ids.") ":" ").
+                    ")
+                AND ques_a.questionid = ".$questionid.") as users_question_attempts
+                WHERE LOWER(users_question_attempts.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
+                ORDER BY users_question_attempts.fullname ASC;";
+
+            $users = $DB->get_records_sql($participants_query, ['search' => $searchText]);
+
+        } else {
+            // General (no specific question), show all enrolled with attempt state 
+            $participants_query = "SELECT DISTINCT * FROM (
+                SELECT
+                    u.id AS id,
                     u.firstname,
                     u.lastname,
                     CONCAT(u.lastname, ' ', u.firstname) AS fullname,
                     CASE
+                        WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
                         WHEN u.deleted = 1 THEN 'deleted' 
-                        WHEN u.suspended = 1 THEN 'suspended'
-                        ELSE qa.state
-                    END AS state, ques_a.questionid, q.name as questionname
-            FROM {quiz_attempts} qa
-            JOIN {question_attempts} ques_a
-            ON qa.uniqueid = ques_a.questionusageid
-            JOIN {question} q
-            ON q.id = ques_a.questionid
-            JOIN {user} u 
-            ON qa.userid = u.id
-            WHERE qa.quiz = ".$quizid.($grp_enabled?" AND qa.userid IN (". $ids.") ":" ").
-            "AND qa.timestart = (
-                SELECT MAX(qa_max.timestart)
-                FROM {quiz_attempts} qa_max
-                WHERE qa_max.quiz = qa.quiz
-                AND qa_max.userid = qa.userid".($grp_enabled ?" AND qa_max.userid IN (".$ids.") ":" ").
-                ")
-            AND ques_a.questionid = ".$questionid.") as users_question_attempts
-            WHERE LOWER(users_question_attempts.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
-            ORDER BY users_question_attempts.fullname ASC;";
+                    WHEN u.suspended = 1 THEN 'suspended' "
+                    .(($enableopenbefore == "1" && $quizopentime)? "WHEN qzatt.timestart < " . $chattimeopen . " THEN 'noattempt' " : "")
+                    ."ELSE COALESCE(qzatt.state, 'noattempt')
+                    END AS state,
+                    ".QUIZCHAT_GENERAL_QUESTION_ID." as questionid, '".$general_txt."' as questionname
+                FROM
+                    {user_enrolments} ue
+                JOIN
+                    {enrol} e ON ue.enrolid = e.id
+                JOIN
+                    {user} u ON ue.userid = u.id
+                LEFT JOIN {role_assignments} ra 
+                    ON u.id = ra.userid AND ra.contextid = ".$coursecontext->id."
+                LEFT JOIN (
+                    SELECT qa.*
+                    FROM {quiz_attempts} qa
+                    JOIN (
+                        SELECT userid, MAX(timestart) AS last_attempt_time
+                        FROM {quiz_attempts}
+                        WHERE quiz = ".$quizid.($grp_enabled?" AND userid IN (". $ids.") ":" ").
+                        "GROUP BY userid
+                    ) AS latest_attempt 
+                    ON qa.userid = latest_attempt.userid 
+                    AND qa.timestart = latest_attempt.last_attempt_time
+                ) AS qzatt ON qzatt.userid = u.id
+                WHERE
+                    e.courseid = ".$quizchat->course.($grp_enabled?" AND u.id IN (".$ids.")":" ").
+            ") AS enrolled
+            WHERE LOWER(enrolled.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
+            ORDER BY enrolled.fullname ASC;";
 
-        $users = $DB->get_records_sql($participants_query, ['search' => $searchText]);
-
-    } else {
-        // General (no specific question), show all enrolled with attempt state 
-        $participants_query = "SELECT DISTINCT * FROM (
-            SELECT
-                u.id AS id,
-                u.firstname,
-                u.lastname,
-                CONCAT(u.lastname, ' ', u.firstname) AS fullname,
-                CASE
-                    WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
-                    WHEN u.deleted = 1 THEN 'deleted' 
-                    WHEN u.suspended = 1 THEN 'suspended'
-                    ELSE COALESCE(qzatt.state, 'noattempt')
-                END AS state,
-                ".QUIZCHAT_GENERAL_QUESTION_ID." as questionid, '".$general_txt."' as questionname
-            FROM
-                {user_enrolments} ue
-            JOIN
-                {enrol} e ON ue.enrolid = e.id
-            JOIN
-                {user} u ON ue.userid = u.id
-            LEFT JOIN {role_assignments} ra 
-                ON u.id = ra.userid AND ra.contextid = ".$coursecontext->id."
-            LEFT JOIN (
-                SELECT qa.*
-                FROM {quiz_attempts} qa
-                JOIN (
-                    SELECT userid, MAX(timestart) AS last_attempt_time
-                    FROM {quiz_attempts}
-                    WHERE quiz = ".$quizid.($grp_enabled?" AND userid IN (". $ids.") ":" ").
-                    "GROUP BY userid
-                ) AS latest_attempt 
-                ON qa.userid = latest_attempt.userid 
-                AND qa.timestart = latest_attempt.last_attempt_time
-            ) AS qzatt ON qzatt.userid = u.id
-            WHERE
-                e.courseid = ".$quizchat->course.($grp_enabled?" AND u.id IN (".$ids.")":" ").
-        ") AS enrolled
-        WHERE LOWER(enrolled.fullname) LIKE CONCAT('%', LOWER('".$searchText."'), '%')
-        ORDER BY enrolled.fullname ASC;";
-
-        $users = $DB->get_records_sql($participants_query, [
-            'search' => $searchText,
-            'courseid' => $quizchat->course,
-            'ctxid' => $coursecontext->id,
-            'general_txt' => $general_txt
-        ]);
+            $users = $DB->get_records_sql($participants_query, [
+                'search' => $searchText,
+                'courseid' => $quizchat->course,
+                'ctxid' => $coursecontext->id,
+                'general_txt' => $general_txt
+            ]);
+        }
     }
 
     return $users;
@@ -298,114 +323,152 @@ function get_group_filtered_user_ids(int $quizid) {
     $allowedgroups = ($groupmode == VISIBLEGROUPS || $aag)
         ? groups_get_all_groups($cm->course, 0, $ggid, 'g.*', false, true)
         : groups_get_all_groups($cm->course, $USER->id, $ggid, 'g.*', false, true);
-
-    $activegroup = groups_get_activity_group($cm, true, $allowedgroups);
     $users_f = [];
-    $grp_enabled = is_quiz_group_access_enabled(intVal($quizchat->cmid),intVal($quizchat->course) );
-    if ($grp_enabled) {
-        $coursecontext = \context_course::instance($quizchat->course);
-        $enrolled = get_enrolled_users($coursecontext);
+    if(!empty($allowedgroups)) {
+        $activegroup = groups_get_activity_group($cm, true, $allowedgroups);
+        
+        $grp_enabled = is_quiz_group_access_enabled(intVal($quizchat->cmid),intVal($quizchat->course) );
+        if ($grp_enabled) {
+            $coursecontext = \context_course::instance($quizchat->course);
+            $enrolled = get_enrolled_users($coursecontext);
 
-        $info = new \core_availability\info_module($cm);
-        $grouping_found = null;
-        $children = null;
-        // Extract groupids from availability conditions
-        if ($ggid == 0) {
-            if(!empty($cm->availability)) {
-                $tree = $info->get_availability_tree();
-            $checker = new \core_availability\capability_checker($context);
-    
-            // Access protected 'children' using Reflection
-            $rc = new ReflectionClass($tree);
-            $prop = $rc->getProperty('children');
-            $prop->setAccessible(true);
-            $children = $prop->getValue($tree);
-            
-            $groupids = array_map(function($child) use ($DB) {
-                $rc = new ReflectionClass($child);
-                if ($rc->hasProperty('groupid')) {
-                    $prop = $rc->getProperty('groupid');
-                    $prop->setAccessible(true);
-                    return $prop->getValue($child);
-                } elseif ($rc->hasProperty('groupingid')) {
-                    $prop = $rc->getProperty('groupingid');
-                    $prop->setAccessible(true);
-                    $groupingid = $prop->getValue($child);
-                    $groupinggroups = $DB->get_records('groupings_groups', ['groupingid' => $groupingid]);
-                    return array_column((array)$groupinggroups, 'groupid');
+            $info = new \core_availability\info_module($cm);
+            $grouping_found = null;
+            $children = null;
+            // Extract groupids from availability conditions
+            if ($ggid == 0) {
+                if(!empty($cm->availability)) {
+                    $tree = $info->get_availability_tree();
+                $checker = new \core_availability\capability_checker($context);
+                
+                // Access protected 'children' using Reflection
+                $rc = new ReflectionClass($tree);
+                $prop = $rc->getProperty('children');
+                $prop->setAccessible(true);
+                $children = $prop->getValue($tree);
+                
+                $groupids = array_map(function($child) use ($DB) {
+                    $rc = new ReflectionClass($child);
+                    if ($rc->hasProperty('groupid')) {
+                        $prop = $rc->getProperty('groupid');
+                        $prop->setAccessible(true);
+                        return $prop->getValue($child);
+                    } elseif ($rc->hasProperty('groupingid')) {
+                        $prop = $rc->getProperty('groupingid');
+                        $prop->setAccessible(true);
+                        $groupingid = $prop->getValue($child);
+                        $groupinggroups = $DB->get_records('groupings_groups', ['groupingid' => $groupingid]);
+                        return array_column((array)$groupinggroups, 'groupid');
+                    }
+                    return null;
+                }, $children);
+                $grouping_found = array_filter($children, fn($child) => $child instanceof \availability_grouping\condition);
+                } else {
+                    if($activegroup == 0) {
+                        $groupids = array_column($allowedgroups, 'id');
+                    }
+                    else {
+                        $groupids[] = (int)$activegroup;
+                    }
                 }
-                return null;
-            }, $children);
-            $grouping_found = array_filter($children, fn($child) => $child instanceof \availability_grouping\condition);
             } else {
                 $groupids = array_column($allowedgroups, 'id');
             }
-        } else {
-            $groupids = array_column($allowedgroups, 'id');
-        }
 
-        $groupids = array_merge(...array_map(fn($g) => (array)$g, $groupids));
-        $groupids = array_unique(array_map('intval', $groupids));
+            $groupids = array_merge(...array_map(fn($g) => (array)$g, $groupids));
+            $groupids = array_unique(array_map('intval', $groupids));
 
-        
 
-        if (in_array($activegroup, $groupids) || $activegroup == 0) {
-            $validgroup = true;
-            $grps = [];
 
-            if ($ggid == 0 && empty($grouping_found)) {
-                $grps =(!empty($cm->availability)? $children :$allowedgroups);
-            } elseif ($ggid != 0) {
-                $grps = $allowedgroups;
-            } elseif (!empty($grouping_found)) {
-                $grps = $groupids;
-            }
-
-            foreach ($grps as $child) {
-                $gid = 0;
+            if (in_array($activegroup, $groupids) || $activegroup == 0) {
+                $validgroup = true;
+                $grps = [];
 
                 if ($ggid == 0 && empty($grouping_found)) {
+                    //$grps[] =(!empty($cm->availability)? $children :($activegroup == 0? $allowedgroups:$activegroup));
                     if(!empty($cm->availability)) {
-                        $rc = new ReflectionClass($child);
-                        if ($rc->hasProperty('groupid')) {
-                            $prop = $rc->getProperty('groupid');
-                            $prop->setAccessible(true);
-                            $gid = $prop->getValue($child);
-                        } else {
-                            continue;
+                        $grps = $children;
+                    } else {
+                        if ($activegroup == 0) {
+                            $grps = $allowedgroups;
                         }
+                        else {
+                            $grps[] = $activegroup;
+                        }
+                    }
+                } elseif ($ggid != 0) {
+                    $grps = $allowedgroups;
+                } elseif (!empty($grouping_found)) {
+                    $grps = $groupids;
+                }
+
+                foreach ($grps as $child) {
+                    $gid = 0;
+
+                    if ($ggid == 0 && empty($grouping_found)) {
+                        if(!empty($cm->availability)) {
+                            $rc = new ReflectionClass($child);
+                            if ($rc->hasProperty('groupid')) {
+                                $prop = $rc->getProperty('groupid');
+                                $prop->setAccessible(true);
+                                $gid = $prop->getValue($child);
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            if(!empty($child->id)) {
+                                $gid = $child->id;
+                            } else {
+                                $gid = $child;
+                            }
+                        }
+
+                    } elseif ($ggid == 0 && !empty($grouping_found)) {
+                        $gid = $child;
                     } else {
                         $gid = $child->id;
                     }
-                    
-                } elseif ($ggid == 0 && !empty($grouping_found)) {
-                    $gid = $child;
-                } else {
-                    $gid = $child->id;
-                }
 
-                if ($activegroup == 0 || ($activegroup != 0 && $gid == $activegroup)) {
-                    if ($activegroup == 0 && $ggid == 0 && empty($grouping_found)) {
-                        if(!empty($cm->availability)) {
-                            $result = $child->filter_user_list($enrolled, false, $info, $checker);
+                    if ($activegroup == 0 || ($activegroup != 0 && $gid == $activegroup)) {
+                        if ($activegroup == 0 && $ggid == 0 && empty($grouping_found)) {
+                            if(!empty($cm->availability)) {
+                                $result = $child->filter_user_list($enrolled, false, $info, $checker);
+                            } else {
+                                $childresult = groups_get_members_by_role((int)$gid, $quizchat->course);
+                                if($childresult) {
+                                    $usersByRole = array_map(function($role) {
+                                        return isset($role->users) ? $role->users : [];
+                                    }, $childresult);
+                                    
+                                    $result = array_merge(...$usersByRole);
+                                } else {
+                                    $result = [];
+                                }
+                                
+                            }
+
                         } else {
-                            $childresult = groups_get_members_by_role($gid, $quizchat->course);
-                            $result = reset($childresult)->users ?? [];
+                            $childresult = groups_get_members_by_role((int)$gid, $quizchat->course);
+                            if($childresult) {
+                                $usersByRole = array_map(function($role) {
+                                    return isset($role->users) ? $role->users : [];
+                                }, $childresult);
+                                
+                                $result = array_merge(...$usersByRole);
+                            } else {
+                                $result = [];
+                            }
                         }
-                        
-                    } else {
-                        $childresult = groups_get_members_by_role($gid, $quizchat->course);
-                        $result = reset($childresult)->users ?? [];
-                    }
 
-                    foreach ($result as $id => $user) {
-                        if (!isset($users_f[$id])) {
-                            $users_f[$id] = $user;
+                        foreach ($result as $id => $user) {
+                            if (!isset($users_f[$id])) {
+                                $users_f[$id] = $user;
+                            }
                         }
-                    }
 
-                    if ($activegroup != 0 && $gid == $activegroup) {
-                        break;
+                        if ($activegroup != 0 && $gid == $activegroup) {
+                            break;
+                        }
                     }
                 }
             }
@@ -466,7 +529,7 @@ function is_quiz_group_access_enabled(int $cmid, int $courseid): bool {
     $activegroup = groups_get_activity_group($cm, true, $allowedgroups);
 
     // Return true if group mode is active and user is in a valid group.
-    return ($activegroup >= 0 && $groupmode != NOGROUPS);
+    return ($activegroup > 0 && $groupmode != NOGROUPS);
 }
 
 /**
@@ -538,7 +601,12 @@ function get_quiz_group_data($cmid) {
             }
         } else {
             if ($ggid == 0) {
-                $groupids = array_column($allowedgroups, 'id');
+                if($activegroup == 0) {
+                    $groupids = array_column($allowedgroups, 'id');
+                }
+                else {
+                    $groupids[] = (int)$activegroup;
+                }
             }
             else {
                 $groupingids[] = (int)$ggid;
@@ -740,6 +808,12 @@ function get_quizattid_by_quesattid ($questionattemptid) {
     $hascap = check_sendallcap($quizchat);
     // Check if the user has any attempts for the quiz
     $attempts = quiz_get_user_attempts($quizchat->quiz, $USER->id,'all',true);
+    $in_progress_attempts = [];
+    if(!empty($attempts) && !$hascap) {
+        $in_progress_attempts = array_filter($attempts, function ($attempt) {
+            return $attempt->state === 'inprogress';
+        });
+    }
     $enableblock = check_blockavailability($quizchat->quiz);
     $curr_quizobj = \mod_quiz\quiz_settings::create_for_cmid($quizchat->cmid);
     $curr_cm_obj = $curr_quizobj->get_cm();
@@ -747,11 +821,11 @@ function get_quizattid_by_quesattid ($questionattemptid) {
     $curr_context_obj = $curr_quizobj->get_context();
     $quizgroupmode = groups_get_activity_groupmode($curr_cm_obj);
     $showallgroups = ($quizgroupmode == NOGROUPS) || has_capability('moodle/site:accessallgroups', $curr_context_obj);
-if ($enableblock && (($attempts && !$hascap)|| ($hascap && $showallgroups))) {
+if ($enableblock && ((!$hascap)|| ($hascap && $showallgroups))) {
     $allgrp_id = intVal($DB->get_record('block_quizchat_group', array('name' => 'all'))->id);
     $teachersgrp_id = intVal($DB->get_record('block_quizchat_group', array('name' => 'teachers'))->id);
     $subquery = "";
-    if(($attempts && !$hascap)) {
+    if(($attempts && !$hascap && !empty($in_progress_attempts))) {
         $subquery = "SELECT ques_att.questionid
                 FROM {question_attempts} as ques_att
                 JOIN {quiz_attempts} as qz_att
@@ -783,16 +857,22 @@ if ($enableblock && (($attempts && !$hascap)|| ($hascap && $showallgroups))) {
         }
         if (!empty($grp_conditions)) {
             if(!$hascap) {
-                $grp_txt = "OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . ") AND (qchm.questionid IN ( ".$subquery.")))"
-            . " OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . ") AND (qchm.questionid IS NULL))";
+                if(!empty($in_progress_attempts)) {
+                    $grp_txt = "OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . ") AND (qchm.questionid IN ( ".$subquery.")))"
+                    . " OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . ") AND (qchm.questionid IS NULL))";
+                }
+                else {
+                    $grp_txt = "OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . "))"
+                    . " OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . ") AND (qchm.questionid IS NULL))";
+                }
             }
             else {
-                $grp_txt = "OR (qchm.groupid IS NOT NULL AND qchm.questionid IS NOT NULL AND qchm.receiverid = 0) OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . "))";
+                $grp_txt = (!empty($userids)? "OR (qchm.groupid IS NOT NULL AND qchm.questionid IS NOT NULL AND qchm.receiverid = 0) OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . "))"
+                            :"OR (qchm.groupid IN (".$allgrp_id.") AND qchm.questionid IS NOT NULL AND qchm.receiverid = 0) OR (qchm.groupid IS NULL AND (" . implode(' OR ', $grp_conditions) . "))");
             }
             
         }
     }
-
     // Get all messages that are rightfully yours
     $sqlquery =
         "SELECT DISTINCT
@@ -817,9 +897,9 @@ if ($enableblock && (($attempts && !$hascap)|| ($hascap && $showallgroups))) {
         CASE
             WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
             WHEN u.deleted = 1 THEN 'deleted' 
-            WHEN u.suspended = 1 THEN 'suspended'
-            ELSE COALESCE(qa.state, 'noattempt')
-        END AS state,
+            WHEN u.suspended = 1 THEN 'suspended' "
+            .(!$hascap &&!empty($in_progress_attempts)?"ELSE COALESCE(qa.state, 'noattempt') ":"ELSE 'noattempt' ")
+        ."END AS state,
         u.firstname,
         u.lastname,
         CASE 
@@ -891,29 +971,31 @@ if ($enableblock && (($attempts && !$hascap)|| ($hascap && $showallgroups))) {
     JOIN {context} ctx 
         ON qch.course = ctx.instanceid
     LEFT JOIN {role_assignments} ra 
-        ON u.id = ra.userid
-    LEFT JOIN {quiz_attempts} qa
-        ON (qa.userid = u.id) AND (qa.quiz = qch.quiz)
-    WHERE qchm.quizchatid = " . $quizchat->id 
+        ON u.id = ra.userid " 
+    .((!$hascap && $attempts && !empty($in_progress_attempts))||$hascap?
+        "LEFT JOIN {quiz_attempts} qa
+        ON (qa.userid = u.id) AND (qa.quiz = qch.quiz)":"")
+    ."WHERE qchm.quizchatid = " . $quizchat->id 
     ." AND qchm.id > " . $most_recent_msg_id
     .((($hascap && !$grp_enabled) || !$hascap)?
         "    AND ((qchm.receiverid = " . $USER->id ." OR qchm.groupid IN (".$allgrp_id.") OR qchm.userid = ".$USER->id.") "
-      : "    AND (((qchm.groupid is not null AND qchm.receiverid = " . $USER->id ." AND qchm.userid IN (".$userids.")) OR qchm.groupid IN (".$allgrp_id.") OR (qchm.groupid is not null AND qchm.userid = ".$USER->id." AND qchm.receiverid IN (".$userids."))) "
+      : (!empty($userids)? 
+      "    AND (((qchm.groupid is not null AND qchm.receiverid = " . $USER->id ." AND qchm.userid IN (".$userids.")) OR qchm.groupid IN (".$allgrp_id.") OR (qchm.groupid is not null AND qchm.userid = ".$USER->id." AND qchm.receiverid IN (".$userids."))) "
+      : "    AND ((qchm.groupid IN (".$allgrp_id.")) ")
      )
     // If user is an instructor they may also poll messages sent to groupid = 2 (teachers group) or 0 (one to one messages: messages sent from teachers accounts)
     . ($hascap ? 
         (!$grp_enabled ?
              " OR qchm.groupid IN ( ".$teachersgrp_id.",0)" 
-             : " OR ((qchm.groupid IN ( ".$teachersgrp_id.") AND qchm.userid IN (".$userids.")) " . $grp_txt . ")"
+             : (!empty($userids)?" OR ((qchm.userid IN (".$userids.")) " . $grp_txt . ")":" ". $grp_txt)
         ) . " OR (qchm.groupid is NULL AND qchm.mgroupid = 0) OR (qchm.groupid is NULL AND qchm.mgroupingid = 0) "
         : (!$grp_enabled ? "" : $grp_txt ))
-    . ((!$hascap && $attempts && !$grp_enabled)? " OR (qchm.questionid IN ( ".$subquery.") and qchm.receiverid = 0 and qchm.groupid = 0)" 
-    : ((!$hascap && $attempts && $grp_enabled)? " OR (qchm.questionid IN ( ".$subquery.") and qchm.receiverid = 0 and qchm.groupid = 0)"
+    . ((!$hascap && $attempts && !empty($in_progress_attempts) && !$grp_enabled)? " OR (qchm.questionid IN ( ".$subquery.") and qchm.receiverid = 0 and qchm.groupid = 0)" 
+    : ((!$hascap && $attempts && !empty($in_progress_attempts) && $grp_enabled)? " OR (qchm.questionid IN ( ".$subquery.") and qchm.receiverid = 0 and qchm.groupid = 0)"
     :""))
     ."    AND ctx.instanceid = qch.course)
     ORDER BY qchm.timestamp ASC;";
     $msg_records = $DB->get_records_sql($sqlquery);
-
     foreach($msg_records as $id => $record){
         $receiverid = $record->receiverid;
         if ($record->groupid == $allgrp_id)
@@ -1028,73 +1110,76 @@ if ($enableblock && (($attempts && !$hascap)|| ($hascap && $showallgroups))) {
     //get private conversations between the current logged in user and others
     if($hascap) {
         $dbfamily = $DB->get_dbfamily();
-        $sqlquery_p_users =
-            "SELECT DISTINCT
-            u.id as userid, 
-            u.firstname, 
-            u.lastname, 
-            CONCAT(u.lastname, ', ', u.firstname) AS fullname,
-            u.picture, 
-            CASE
-                WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
-                WHEN u.deleted = 1 THEN 'deleted' 
-                WHEN u.suspended = 1 THEN 'suspended'
-                ELSE COALESCE(qa.state, 'noattempt')
-            END AS state, "
-            .($dbfamily == 'postgres' ? "(SELECT STRING_AGG(qcm_sub.id::text, ', ')
-            FROM (
-                SELECT DISTINCT qcm.id, qcm.timestamp
-                FROM {block_quizchat_messages} AS qcm
-                WHERE (qcm.userid = u.id OR qcm.receiverid = u.id)
-                AND qcm.quizchatid = ". $quizchat->id.
-                " ORDER BY qcm.timestamp ASC
-            ) AS qcm_sub) AS message_ids" 
-            : " GROUP_CONCAT(DISTINCT qcm.id ORDER BY qcm.timestamp ASC SEPARATOR ', ') as message_ids")
-            ." FROM 
-            {user} as u
-        JOIN
-        (
-            SELECT DISTINCT id as user_id
-            FROM
+        $p_users_records = [];
+        if(($grp_enabled && !empty($userids)) || (!$grp_enabled)) {
+            $sqlquery_p_users =
+                "SELECT DISTINCT
+                u.id as userid, 
+                u.firstname, 
+                u.lastname, 
+                CONCAT(u.lastname, ', ', u.firstname) AS fullname,
+                u.picture, 
+                CASE
+                    WHEN ra.userid IS NULL AND u.deleted = 0 THEN 'unenrolled'
+                    WHEN u.deleted = 1 THEN 'deleted' 
+                    WHEN u.suspended = 1 THEN 'suspended'
+                    ELSE COALESCE(qa.state, 'noattempt')
+                END AS state, "
+                .($dbfamily == 'postgres' ? "(SELECT STRING_AGG(qcm_sub.id::text, ', ')
+                FROM (
+                    SELECT DISTINCT qcm.id, qcm.timestamp
+                    FROM {block_quizchat_messages} AS qcm
+                    WHERE (qcm.userid = u.id OR qcm.receiverid = u.id)
+                    AND qcm.quizchatid = ". $quizchat->id.
+                    " ORDER BY qcm.timestamp ASC
+                ) AS qcm_sub) AS message_ids" 
+                : " GROUP_CONCAT(DISTINCT qcm.id ORDER BY qcm.timestamp ASC SEPARATOR ', ') as message_ids")
+                ." FROM 
+                {user} as u
+            JOIN
             (
-                SELECT 
-                    CASE 
-                        WHEN pmsgs.groupid = ".$teachersgrp_id." OR pmsgs.receiverid = ".$USER->id." THEN pmsgs.userid
-                        ELSE pmsgs.receiverid
-                    END as id
-                FROM 
+                SELECT DISTINCT id as user_id
+                FROM
                 (
-                    SELECT *
-                    FROM {block_quizchat_messages} as qchm
-                    WHERE qchm.quizchatid = " . $quizchat->id
-                    ."  AND ((qchm.receiverid = ".$USER->id." AND qchm.groupid IN (0)".($grp_enabled? " AND qchm.userid IN (".$userids.")" : "") .") OR (qchm.userid = ".$USER->id." AND qchm.groupid IN (0)".($grp_enabled? " AND qchm.receiverid IN (".$userids.")" : "") .") OR (qchm.groupid = ".$teachersgrp_id.($grp_enabled? " AND qchm.userid IN (".$userids.")" : "") ."))  
-                    AND qchm.groupid NOT IN (".$allgrp_id.") 
-                    AND ((qchm.questionid IS not NULL and qchm.receiverid != 0) or (qchm.questionid IS NULL and qchm.groupid in (0,".$teachersgrp_id.")))
-                    ORDER BY qchm.timestamp ASC
-                ) as pmsgs
-                WHERE ((pmsgs.receiverid = ".$USER->id." OR pmsgs.userid = ".$USER->id." OR pmsgs.groupid = ".$teachersgrp_id."))
-            ) AS userids
-        ) as u_ids
-        ON u.id = u_ids.user_id
-        LEFT JOIN {role_assignments} AS ra 
-            ON u.id = ra.userid
-        LEFT JOIN {quiz_attempts} AS qa
-            ON u_ids.user_id = qa.userid 
-            AND qa.quiz = " . $quizchat->quiz
-            ." AND qa.timestart = (
-                SELECT MAX(qa_max.timestart)
-                FROM {quiz_attempts} as qa_max
-                WHERE qa_max.quiz = qa.quiz
-                AND qa_max.userid = qa.userid
-            )".($dbfamily == 'postgres' ? "WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz . 
-            " GROUP BY u.id, u.firstname, u.lastname, u.picture, u.deleted, u.suspended, ra.userid, state;" 
-        : "JOIN {block_quizchat_messages} as qcm
-            ON ((qcm.userid = u.id AND (qcm.receiverid = ".$USER->id." OR qcm.groupid = ".$teachersgrp_id.")) OR qcm.receiverid = u.id) AND (qcm.groupid != ".$allgrp_id." AND ((qcm.questionid IS not NULL and qcm.receiverid != 0) or (qcm.questionid IS NULL and qcm.groupid in (0,".$teachersgrp_id."))))
-            AND qcm.quizchatid = " . $quizchat->id
-            ." WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz
-            ." GROUP BY u.id, u.firstname, u.lastname, u.picture, state;");
-        $p_users_records = $DB->get_records_sql($sqlquery_p_users);
-        foreach($p_users_records as $id => $record){
+                    SELECT 
+                        CASE 
+                            WHEN pmsgs.groupid = ".$teachersgrp_id." OR pmsgs.receiverid = ".$USER->id." THEN pmsgs.userid
+                            ELSE pmsgs.receiverid
+                        END as id
+                    FROM 
+                    (
+                        SELECT *
+                        FROM {block_quizchat_messages} as qchm
+                        WHERE qchm.quizchatid = " . $quizchat->id
+                        ."  AND ((qchm.receiverid = ".$USER->id." AND qchm.groupid IN (0)".($grp_enabled? " AND qchm.userid IN (".$userids.")" : "") .") OR (qchm.userid = ".$USER->id." AND qchm.groupid IN (0)".($grp_enabled? " AND qchm.receiverid IN (".$userids.")" : "") .") OR (qchm.groupid = ".$teachersgrp_id.($grp_enabled? " AND qchm.userid IN (".$userids.")" : "") ."))  
+                        AND qchm.groupid NOT IN (".$allgrp_id.") 
+                        AND ((qchm.questionid IS not NULL and qchm.receiverid != 0) or (qchm.questionid IS NULL and qchm.groupid in (0,".$teachersgrp_id.")))
+                        ORDER BY qchm.timestamp ASC
+                    ) as pmsgs
+                    WHERE ((pmsgs.receiverid = ".$USER->id." OR pmsgs.userid = ".$USER->id." OR pmsgs.groupid = ".$teachersgrp_id."))
+                ) AS userids
+            ) as u_ids
+            ON u.id = u_ids.user_id
+            LEFT JOIN {role_assignments} AS ra 
+                ON u.id = ra.userid
+            LEFT JOIN {quiz_attempts} AS qa
+                ON u_ids.user_id = qa.userid 
+                AND qa.quiz = " . $quizchat->quiz
+                ." AND qa.timestart = (
+                    SELECT MAX(qa_max.timestart)
+                    FROM {quiz_attempts} as qa_max
+                    WHERE qa_max.quiz = qa.quiz
+                    AND qa_max.userid = qa.userid
+                )".($dbfamily == 'postgres' ? "WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz . 
+                " GROUP BY u.id, u.firstname, u.lastname, u.picture, u.deleted, u.suspended, ra.userid, state;" 
+            : "JOIN {block_quizchat_messages} as qcm
+                ON ((qcm.userid = u.id AND (qcm.receiverid = ".$USER->id." OR qcm.groupid = ".$teachersgrp_id.")) OR qcm.receiverid = u.id) AND (qcm.groupid != ".$allgrp_id." AND ((qcm.questionid IS not NULL and qcm.receiverid != 0) or (qcm.questionid IS NULL and qcm.groupid in (0,".$teachersgrp_id."))))
+                AND qcm.quizchatid = " . $quizchat->id
+                ." WHERE qa.quiz IS NULL OR qa.quiz = " . $quizchat->quiz
+                ." GROUP BY u.id, u.firstname, u.lastname, u.picture, state;");
+            $p_users_records = $DB->get_records_sql($sqlquery_p_users);
+        }
+        foreach($p_users_records as $id => $record) {
             array_push($msgStruct['p_users'], [
                 'userid' => $record->userid,
                 'firstname' => $record->firstname,
@@ -1167,11 +1252,51 @@ function check_blockavailability($quizid)
     $hascap=check_sendallcap($quizchat);
     // Check if the user has any attempts for the quiz
     $attempts = quiz_get_user_attempts($quizid, $USER->id,'unfinished',true);
+    $block_config_ar = ((array) unserialize_object(base64_decode($DB->get_record('block_instances', array('id' => $quizchat->instanceid))->configdata)));
+    $enableopenbefore = $block_config_ar['enableopenbefore'];
+    $openbefore = !empty($block_config_ar['openbefore']) ? (int)$block_config_ar['openbefore'] / MINSECS: 0;
+    //$quiz = $DB->get_record('quiz', ['id' => $quizchat->quiz], '*', MUST_EXIST);
+    $curr_quizsettobj = \mod_quiz\quiz_settings::create((int)$quizchat->quiz, $USER->id);
+    // Use ReflectionClass to access protected attributes  
+    $rc = new ReflectionClass($curr_quizsettobj);
+    $prop = $rc->getProperty('quiz');
+    $prop->setAccessible(true);
+    $byreflection_quiz = $prop->getValue($curr_quizsettobj);
+    $quiz = $byreflection_quiz;
+    $quizopentime = $quiz->timeopen;
+    $quizclosetime = (int)$quiz->timeclose > 0 ? (int)$quiz->timeclose : (int)$quizopentime + ((int)$quiz->timelimit);
+    $opentime_exceeded = false;
+    if ($enableopenbefore == "1" && $quizopentime && !$hascap) {
+        
+        $chattimeopen = (int)$quizopentime - ((int)$openbefore * 60);
+
+        if (time() >= $chattimeopen && time() <= $quizclosetime) {
+            $opentime_exceeded = true;
+        }
+    }
     $enableblock = false;
-    if($attempts||$hascap){
+    if($attempts||$hascap||$opentime_exceeded){
         $enableblock = true;
     }
     return $enableblock;
+}
+
+/**
+ * get the duration of how many minutes before the quiz starts will the chat open
+ * @param int $quizid quiz id
+ * @return int  how many minutes before the quiz starts will the chat open
+ */
+function get_open_duration($quizid): int
+{
+    global $DB;
+    $quizchat = $DB->get_record('block_quizchat', array('quiz' => $quizid));
+    $block_config_ar = ((array) unserialize_object(base64_decode($DB->get_record('block_instances', array('id' => $quizchat->instanceid))->configdata)));
+    $enableopenbefore = $block_config_ar['enableopenbefore'];
+    $openbefore = 0;
+    if($enableopenbefore) {
+        $openbefore = !empty($block_config_ar['openbefore']) ? (int)$block_config_ar['openbefore'] / MINSECS: 0;
+    }
+    return $openbefore;
 }
 
 /**
@@ -1274,19 +1399,19 @@ function create_msg($quizchatid, $receiverid, $messagetext, $groupid, $questiona
     // |   "1"          |       > 0 (int - selected group id) |        > 0 (string - selected grouping id) | group/grouping mode is activated - a group from groups menu is selected -  Grouping is activated              | groupid = null - mgroupid = selected group id - mgroupingid = null, gname = selected group name
     $ids = '';
     $coursecontext = \context_course::instance($quizchat->course);
-    if($activegroup >= 0 && $quizgroupmode) { //group/grouping mode is activated
+    if($activegroup >= 0 && $quizgroupmode && $aag) { //group/grouping mode is activated
         $message = [
             "quizchatid" => $quizchatid,
             "userid" => $sender_id,
             "receiverid" => $receiverid,
             "message" => $messagetext,
-            "groupid" => (($activegroup == 0 && intVal($ggid) == 0)? 1 : null),
+            "groupid" => (($activegroup == 0 && intVal($ggid) == 0 && $receiverid <= 0)? 1 : ($receiverid <= 0 ? null:0)),
             "timestamp" => time(),
             "questionattemptid" => $question_attemptid,
             "questionid" => $question_id,
-            "mgroupid" => ($activegroup > 0  ? $activegroup : (($activegroup == 0 && intVal($ggid) == 0)? 0 :null)),
-            "mgroupingid" => (($activegroup == 0 && intVal($ggid) > 0 ) ? intVal($ggid) : null),
-            "gname" => ($activegroup > 0 ? $DB->get_record('groups',['id' => $activegroup])->name: (($activegroup == 0 && intVal($ggid) > 0 ) ? $DB->get_record('groupings',['id' => intVal($ggid)])->name : null))
+            "mgroupid" => ($activegroup > 0 && $receiverid <= 0 ? $activegroup : (($activegroup == 0 && intVal($ggid) == 0)? 0 :null)),
+            "mgroupingid" => (($activegroup == 0 && intVal($ggid) > 0 && $receiverid <= 0) ? intVal($ggid) : null),
+            "gname" => ($activegroup > 0 && $receiverid <= 0 ? $DB->get_record('groups',['id' => $activegroup])->name: (($activegroup == 0 && intVal($ggid) > 0 && $receiverid <= 0) ? $DB->get_record('groupings',['id' => intVal($ggid)])->name : null))
         ];
         $msgid = $DB->insert_record('block_quizchat_messages', $message);
         // Trigger the event.
@@ -1399,33 +1524,36 @@ function get_slotorder($senderid, $quizchatid, $searchtext, $generalstring)
         FROM {quiz_attempts}
         WHERE userid = ".$senderid."
         AND quiz = ".$quizid."
+        AND state = 'inprogress'
         ORDER BY timestart DESC
         LIMIT 1";
         $qzattempt = $DB->get_record_sql($lastattemptquery);
-        $attemptobj = quiz_create_attempt_handling_errors(intVal($qzattempt->id), intVal(($quizchat->cmid)));
-        $qubaid = intVal($qzattempt->uniqueid);
-        $quba = \question_engine::load_questions_usage_by_activity($qubaid);
-        $slots = $attemptobj->get_slots();
-        // Use ReflectionClass to access protected 'questionattempts'  
-        $rc = new ReflectionClass($quba);
-        $prop = $rc->getProperty('questionattempts');
-        $prop->setAccessible(true);
-        $byreflection_quesattempts = $prop->getValue($quba);
-        $real_questions = array_values(array_map(
-            fn($attempt) => [
-                'questionid' => -1,
-                'teacherslotorder' => -1,
-                'questionsummary' => "-",
-                'studentquestionorder' => $attemptobj->get_question_number(intVal($attempt->get_slot())), 
-                'questionlink' => "-",
-                'questionattemptid' => intVal($attempt->get_database_id()),
-                'questionname' => "-"
-            ],
-            array_filter($byreflection_quesattempts, fn($attempt) => $attemptobj->get_question_type_name(intVal($attempt->get_slot())) !== 'description' && stristr($attemptobj->get_question_number(intVal($attempt->get_slot())), strtolower($searchtext)))
-        ));
-        //questions sorting
-        array_multisort(array_column($real_questions, 'studentquestionorder'), SORT_ASC, $real_questions);
-        $questions['questions'] = array_merge($questions['questions'], $real_questions);
+        if($qzattempt) {
+            $attemptobj = quiz_create_attempt_handling_errors(intVal($qzattempt->id), intVal(($quizchat->cmid)));
+            $qubaid = intVal($qzattempt->uniqueid);
+            $quba = \question_engine::load_questions_usage_by_activity($qubaid);
+            $slots = $attemptobj->get_slots();
+            // Use ReflectionClass to access protected 'questionattempts'  
+            $rc = new ReflectionClass($quba);
+            $prop = $rc->getProperty('questionattempts');
+            $prop->setAccessible(true);
+            $byreflection_quesattempts = $prop->getValue($quba);
+            $real_questions = array_values(array_map(
+                fn($attempt) => [
+                    'questionid' => -1,
+                    'teacherslotorder' => -1,
+                    'questionsummary' => "-",
+                    'studentquestionorder' => $attemptobj->get_question_number(intVal($attempt->get_slot())), 
+                    'questionlink' => "-",
+                    'questionattemptid' => intVal($attempt->get_database_id()),
+                    'questionname' => "-"
+                ],
+                array_filter($byreflection_quesattempts, fn($attempt) => $attemptobj->get_question_type_name(intVal($attempt->get_slot())) !== 'description' && stristr($attemptobj->get_question_number(intVal($attempt->get_slot())), strtolower($searchtext)))
+            ));
+            //questions sorting
+            array_multisort(array_column($real_questions, 'studentquestionorder'), SORT_ASC, $real_questions);
+            $questions['questions'] = array_merge($questions['questions'], $real_questions);
+        }
     }
    return $questions;
 }

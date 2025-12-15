@@ -11,9 +11,6 @@ Feature: Message date validation and grouping of messages
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C2     | q1       | 1         |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | q1        | mod-quiz-*      | side-pre      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher1 | Teacher   | 1        | teacher1@example.com |
@@ -37,6 +34,10 @@ Feature: Message date validation and grouping of messages
   Scenario: check quizchat message date
     When I log in as "teacher1"
     And I am on the "Quiz 1" "mod_quiz > View" page
+    And I wait until the page is ready
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
     And I wait until the page is ready
     And I set the field "block_quizchat_input_instructor_send" to "This is my first message."
     And I press "Send"

@@ -136,6 +136,9 @@ class qcmaster implements renderable, templatable {
         }
         else if(!$data->is_teacher) {
             $group_access = true;
+            $duration = get_open_duration($quizchat->quiz);
+            $data->enableblock = $enableblock;
+            $data->openduration = $duration;
         }
         // Load and initialize all javascript modules
         // initializing constants via web service

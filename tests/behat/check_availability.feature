@@ -11,9 +11,6 @@ Feature: Quizchat Availability
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C1     | q1       | 1         |
-    And the following "blocks" exist:
-      | blockname| contextlevel    | reference | pagetypepattern | defaultregion |
-      | quizchat | Activity module | q1        | mod-quiz-*      | side-pre      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher2 | Teacher   | 2        | teacher2@example.com |
@@ -35,15 +32,20 @@ Feature: Quizchat Availability
       | question                | page |
       | TF1                     | 1    |
       | TF2                     | 2    |
-    And I log in as "teacher1"
+  @javascript
+  Scenario: check availability in noneditting teacher view after and before preview attempt
+    When I log in as "teacher1"
     And I am on the "Quiz 1" "mod_quiz > View" page
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
     And I wait until the page is ready
     And I set the field "block_quizchat_input_instructor_send" to "I'm teacher 1"
     And I press "Send"
     And I should see "I'm teacher 1"
-  @javascript
-  Scenario: check availability in noneditting teacher view after and before preview attempt
-    When I log in as "teacher2"
+    And I close all opened windows
+    And I log out
+    And I log in as "teacher2"
     And I am on the "Quiz 1" "mod_quiz > View" page
     Then I should see "Quizchat will not be available until quiz attempt starts."
     And I should not see "You can only chat with the course instructor."
@@ -62,7 +64,18 @@ Feature: Quizchat Availability
     And "block_quizchat_questions_select" "select" should exist
   @javascript
   Scenario: check availability in student view after and before quiz attempt
-    When I log in as "student1"
+    When I log in as "teacher1"
+    And I am on the "Quiz 1" "mod_quiz > View" page
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I press "Save changes"
+    And I wait until the page is ready
+    And I set the field "block_quizchat_input_instructor_send" to "I'm teacher 1"
+    And I press "Send"
+    And I should see "I'm teacher 1"
+    And I close all opened windows
+    And I log out
+    And I log in as "student1"
     And I am on the "Quiz 1" "mod_quiz > View" page
     Then I should see "Quizchat will not be available until quiz attempt starts."
     And I should not see "You can only chat with the course instructor."
@@ -79,3 +92,43 @@ Feature: Quizchat Availability
     And the "block_quizchat_input_student_send" "field" should be enabled
     And the "block_quizchat_button_student_send" "button" should be enabled
     And "block_quizchat_questions_select" "select" should exist
+  @javascript
+  Scenario: check availability in student view if chat is open before quiz starting
+    When I log in as "admin"
+    And I navigate to "Location > Location settings" in site administration
+    And I set the following fields to these values:
+      | Default timezone | Europe/Berlin |
+      | Default country  | Germany       |
+    And I press "Save changes"
+    And the following "activities" exist:
+      | activity   | name   | intro              | course | idnumber | timeopen              | timeclose            | timelimit | attempts | showblocks|
+      | quiz       | Quiz 2 | Quiz 2 description | C1     | quiz2    | ## now +3 minutes ##  | ## now +4 minutes ## | 60        | 1        | 1         |
+    And quiz "Quiz 2" contains the following questions:
+      | question | page |
+      | TF1      | 1    |
+    And I am on the "Quiz 2" "mod_quiz > View" page
+    And I turn editing mode on
+    And I add the "Quizchat..." block
+    And I set the field with xpath "//input[@type='checkbox' and @name='config_enableopenbefore']" to "1"
+    And I set the field with xpath "//input[@type='text' and @name='config_openbefore[number]']" to "1"
+    And I press "Save changes"
+    And I am on the "Quiz 2" "mod_quiz > View" page
+    And I close all opened windows
+    And I log out
+    And I am on the "Quiz 2" "mod_quiz > View" page logged in as "student1"
+    And I wait until the page is ready
+    And I wait until Quizchat is available at quiz "Quiz 2"
+    And I wait until the page is ready
+    Then I should not see "Quizchat will not be available until quiz attempt starts."
+    And I should see "1000 character(s) remaining."
+    And "Attempt quiz" "button" should not exist
+    And I wait "60" seconds
+    And I reload the page
+    Then "Attempt quiz" "button" should exist
+    And I press "Attempt quiz"
+    And I press "Start attempt"
+    And I wait until "Finished" "text" exists
+    And I should not see "1000 character(s) remaining."
+    And I should see "Access to Quizchat is restricted until 1 minutes before the quiz start time."
+
+

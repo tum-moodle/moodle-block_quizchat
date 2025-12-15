@@ -23,6 +23,6 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025070301;        // The current plugin version (Date: YYYYMMDDXX)
+$plugin->version   = 2025111000;        // The current plugin version (Date: YYYYMMDDXX)
 $plugin->requires  = 2020060900;        // Requires this Moodle version
 $plugin->component = 'block_quizchat';      // Full name of the plugin (used for diagnostics)

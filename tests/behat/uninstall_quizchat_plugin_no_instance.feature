@@ -9,9 +9,6 @@ Feature: Uninstall quizchat block plugin.
     And the following "activities" exist:
       | activity   | name   | course | idnumber | showblocks|
       | quiz       | Quiz 1 | C1     | q1       | 1         |
-    And the following "activities" exist:
-      | activity   | name   | course | idnumber |
-      | chat       | Chat 1 | C1     | ch1      |
     And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher2 | Teacher   | 2        | teacher2@example.com |

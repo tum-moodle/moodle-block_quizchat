@@ -333,4 +333,48 @@ public function check_count_date($count) {
     throw new Exception("No dates found.");
   }
 }
+
+/**
+     * Waits until quizchat is available.
+     *
+     * @Given /^I wait until Quizchat is available at quiz "([^"]*)"$/
+     * @param string $quizname the name of Quizchat quiz.
+     */
+    public function i_wait_until_quizchat_is_available_at_quiz($quizname) {
+      global $USER, $DB, $CFG;
+      require_once($CFG->dirroot.'/mod/quiz/lib.php');
+
+      $quizid = $DB->get_field('quiz', 'id', ['name' => $quizname], MUST_EXIST);
+      $quizchat = $DB->get_record('block_quizchat', ['quiz' => $quizid], '*', MUST_EXIST);
+
+      $block_config_ar = ((array) unserialize_object(base64_decode($DB->get_record('block_instances', array('id' => $quizchat->instanceid))->configdata)));
+      $enableopenbefore = $block_config_ar['enableopenbefore'];
+      $openbefore = !empty($block_config_ar['openbefore']) ? (int)$block_config_ar['openbefore'] / MINSECS: 0;
+      $curr_quizsettobj = \mod_quiz\quiz_settings::create((int)$quizchat->quiz, $USER->id);
+      // Use ReflectionClass to access protected attributes  
+      $rc = new ReflectionClass($curr_quizsettobj);
+      $prop = $rc->getProperty('quiz');
+      $prop->setAccessible(true);
+      $byreflection_quiz = $prop->getValue($curr_quizsettobj);
+      $quiz = $byreflection_quiz;
+      $quizopentime = $quiz->timeopen;
+      $quizclosetime = (int)$quiz->timeclose > 0 ? (int)$quiz->timeclose : (int)$quizopentime + ((int)$quiz->timelimit);
+      $chattimeopen = null;
+      if ($enableopenbefore == "1" && $quizopentime) {
+          $chattimeopen = (int)$quizopentime - ((int)$openbefore * 60);
+      }
+      $now = time();
+      $seconds = $chattimeopen - $now;
+      if($seconds >= 0) {
+        if ($this->running_javascript()) {
+            $this->getSession()->wait($seconds * 1000);
+        } else {
+            sleep($seconds);
+        }
+        $this->getSession()->reload();
+      }
+      else {
+        return;
+      }
+  }
 }
