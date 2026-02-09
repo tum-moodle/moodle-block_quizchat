@@ -36,7 +36,10 @@ define('QUIZCHAT_POLL_TIMEOUT_MAX', 60);
 define('QUIZCHAT_UNNOTIFY_TIMEOUT_MAX', 60);
 define('QUIZCHAT_MSG_LENGTH_MIN', 1);
 define('QUIZCHAT_MSG_LENGTH_MAX', 5000);
+define('QUIZCHAT_TEMP_MSG_LENGTH_MAX', 100);
+define('QUIZCHAT_OPEN_BEFORE_MINS', 20);
 use mod_quiz\local\reports\report_base;
+use core\output\pix_icon;
 
 /**
  * Given an object containing all the necessary data,
@@ -788,7 +791,7 @@ function get_quizattid_by_quesattid ($questionattemptid) {
  * @return array messages array
  */
  function get_msgs($quizchatid,$most_recent_msg_id, $langstr_general, $langstr_group, $langstr_attempt, $langstr_all, $langstr_strftimerecentfull, $deleted_langstr) {
-    global $DB, $USER, $CFG, $OUTPUT;
+    global $DB, $USER, $CFG;
     require_once($CFG->dirroot.'/mod/quiz/lib.php');
     require_once($CFG->dirroot . '/mod/quiz/locallib.php');
     $grp_langstr = $langstr_group;
@@ -1614,4 +1617,246 @@ function get_questionattemptid_in_quizattempt($questionid, $quizattemptid)
                 ." AND ques_att.questionid = ".$questionid;
     $questionatt_id = $DB->get_field_sql($query);
     return $questionatt_id;
+}
+
+/**
+ * Create new template message or update a specific one
+ * @param string $title template message title
+ * @param string $template template message body
+ * @param bool $isenabled whether this template is enabled for site-level use
+ * @param bool $isquizlevel whether this template is for site-level or block-level use
+ * @param int $templateid template id in case of edit template and null if create template
+ * @param int $quizchatid quizchatid in case of add template in block and null otherwise
+ * @return int $templateid templateid
+ */
+function create_temp_msg($title, $template, $isenabled, $isquizlevel, $templateid = null, $quizchatid = null)
+{
+    global $USER, $DB;
+    $tempid=0;
+    if($templateid > 0) {//edit template
+        if(!$isquizlevel && $quizchatid > 0) {// edit central temp msg in a block
+            // Fetch the record (ensure it exists)
+            $bt_record = $DB->get_record('block_quizchat_block_templates', ['templateid' => $templateid, 'quizchatid' => $quizchatid], '*');
+            if ($isenabled) {
+                if($bt_record) {
+                    $deleted_bt = $DB->delete_records('block_quizchat_block_templates', ['id' => (int)$bt_record->id]);
+                }
+            } else {
+                if(!$bt_record) {
+                    $blk_temp = [
+                        "templateid" => $templateid,
+                        "quizchatid" => $quizchatid,
+                        "isexcluded" => true
+                    ];
+                    $blk_temp_id = $DB->insert_record('block_quizchat_block_templates', $blk_temp);
+                }
+            }
+            $tempid = $templateid;
+        } else {
+            //edit central temp msg in admin settings or edit quiz temp msg in block
+            $temp = (object)[
+                "id" => $templateid,
+                "title" => $title,
+                "template" => $template,
+                "isenabled" => $isenabled,
+                "userid" => $USER->id,
+                "timemodified" => time()
+            ];
+            $tempid = $DB->update_record('block_quizchat_templates', $temp);
+        }
+    } else {//create new template
+        $temp = [
+            "title" => $title,
+            "template" => $template,
+            "isenabled" => $isenabled,
+            "isquizlevel" => $isquizlevel,
+            "type" => 'msg', //"msg= predefined message in templates menu, ques= predefined topic in questions menu"
+            "userid" => $USER->id,
+            "timecreated" => time(),
+            "timemodified" => time()
+        ];
+        $tempid = $DB->insert_record('block_quizchat_templates', $temp);
+
+        if($quizchatid > 0) {
+            $blk_temp = [
+                "templateid" => $tempid,
+                "quizchatid" => $quizchatid
+            ];
+            $blk_temp_id = $DB->insert_record('block_quizchat_block_templates', $blk_temp);
+        }
+    }
+    return $tempid;
+}
+
+/**
+ * @param int $templateid template id in case of get one template and null if get all templates
+ * @param bool $onlyenabled true if only enabled templates to be retrieved
+ * @param int $quizchatid quizchat id in case of get one template or all templates of a quizchat block
+ * @param string $partial_name Partial name of template message title
+ * @param bool $centraltempflag true if central template message are in use
+ * Get one template msg data or get all template messages of type 'msg'
+ * @return array List of formatted rows ready for display.
+ */
+function get_template_messages( $partial_name, $templateid = null, $onlyenabled= null, $quizchatid = null, $centraltempflag =null): array {
+    global $DB, $CFG, $OUTPUT, $PAGE;
+    require_once($CFG->dirroot . '/lib/moodlelib.php');
+    $sql="";
+    if(is_null($quizchatid) && !$centraltempflag)//get template messages for admin settings (site level template messages)
+    {
+        $sql = "SELECT t.id, t.title, t.template, t.isenabled, t.isquizlevel,
+                   t.timemodified, t.userid,  
+                   CASE 
+                   WHEN t.userid = 0  THEN 'Auto Generated'
+                   WHEN t.userid != 0  THEN CONCAT(u.lastname, ', ', u.firstname) 
+               END as fullname 
+              FROM {block_quizchat_templates} t
+         LEFT JOIN {user} u ON u.id = t.userid
+         LEFT JOIN {block_quizchat_block_templates} bt 
+               ON bt.templateid = t.id" 
+               //AND bt.quizchatid = ".$quizchatid
+            ." WHERE t.type = :type AND t.isquizlevel = 0 "
+             .($templateid > 0 ? " AND t.id = ".$templateid." ":"")
+             .($onlyenabled ? " AND t.isenabled = ".$onlyenabled." ":"")
+          ."AND LOWER(t.title) LIKE '%{$partial_name}%' ORDER BY t.timemodified DESC";
+    }
+    else {//get template messages in a block settings (site level template messages that are not excluded in block and enabled in site level +  quiz level template messages)
+        if(!is_null($quizchatid) && $centraltempflag && !$onlyenabled) {
+            $sql = "SELECT t.id, t.title, t.template,
+             CASE 
+                   WHEN bt.isexcluded IS NULL THEN 1
+                   WHEN bt.isexcluded = 1  THEN 0
+               END AS isenabled, 
+               t.isquizlevel,
+                           t.timemodified, t.userid,  CONCAT(u.lastname, ', ', u.firstname) AS fullname
+                      FROM {block_quizchat_templates} t
+                 LEFT JOIN {user} u ON u.id = t.userid
+                 LEFT JOIN {block_quizchat_block_templates} bt 
+               ON bt.templateid = t.id 
+               AND bt.quizchatid = ".$quizchatid
+                     ." WHERE t.type = :type AND t.isquizlevel = 0 AND t.isenabled = true "
+                     //.($onlyenabled ? " AND t.isenabled = ".$onlyenabled." ":"")
+                  ."AND LOWER(t.title) LIKE '%{$partial_name}%' ORDER BY t.timemodified DESC";
+        } else {
+            $sql =
+          "SELECT 
+               t.id, 
+               t.title, 
+               t.template,
+               t.isenabled,
+               t.isquizlevel,
+               t.timemodified, 
+               t.userid,  
+               CASE 
+                   WHEN t.isquizlevel = 0  THEN 'Admin'
+                   WHEN t.isquizlevel != 0  THEN CONCAT(u.lastname, ', ', u.firstname)
+               END as fullname
+           FROM {block_quizchat_templates} t
+           LEFT JOIN {user} u 
+               ON u.id = t.userid
+           LEFT JOIN {block_quizchat_block_templates} bt 
+               ON bt.templateid = t.id 
+               AND bt.quizchatid = ".$quizchatid
+            ." WHERE 
+               t.type = :type
+               AND (
+                   -- Case 1: linked to this block
+                   (bt.id IS NOT NULL AND bt.isexcluded = 0"
+                   .($onlyenabled ? " AND t.isenabled = ".$onlyenabled." ":"")
+                   .")"
+                   .($centraltempflag?" OR (t.isquizlevel = 0 AND t.isenabled = 1 AND bt.id IS NULL)":"")//-- Case 2: global quiz-level template, enabled, and not linked to this block"
+                   .")"
+               .($templateid > 0 ? " AND t.id = ".$templateid." ":"")
+               //.($centraltempflag > 0 ? "":" AND t.isquizlevel = 1 ")
+           ." AND LOWER(t.title) LIKE '%{$partial_name}%' ORDER BY t.timemodified DESC";
+        }
+    }
+
+    $records = $DB->get_records_sql($sql, ['type' => 'msg']);
+    $rows = [];
+    $action_txt = '';
+    if(!isset($PAGE->context))
+    {
+        $PAGE->set_context(context_system::instance());
+    }
+    foreach ($records as $rec) {
+        // Enabled flag
+        $isenabled = $rec->isenabled ? get_string('table_enabled_settings', 'block_quizchat') : get_string('table_disabled_settings', 'block_quizchat');
+        // Creator full name
+        $username = $rec->fullname;
+
+        // Format date
+        $timemodified = !empty($rec->timemodified)
+            ? userdate($rec->timemodified, get_string('strftimedatetime', 'langconfig')) // '%d %B %Y, %I:%M %p'
+            : '-';
+
+        // Action links
+        if(($rec->isquizlevel && !is_null($quizchatid)) || (is_null($quizchatid) && !$onlyenabled) ) {//if quiz/block level template and get_template_messages is called from block settings - or - if get_template_messages is called from block settings
+            $editurl = '#';
+            $deleteurl = '#';
+            $editiconhtml = $OUTPUT->render(new pix_icon('t/edit', get_string('btn_edit', 'block_quizchat')));
+            $editlink = html_writer::link(
+                $editurl,
+                $editiconhtml,
+                [
+                    'class' => 'edit_btn',
+                    'data-id' => $rec->id,
+                    'href' => '#'
+                ]); 
+            $deleteiconhtml = $OUTPUT->render(new pix_icon('t/delete', get_string('btn_delete', 'block_quizchat')));
+            $deletelink = html_writer::link(
+                $deleteurl,
+                $deleteiconhtml,
+                [
+                    'class' => 'delete_btn',
+                    'data-id' => $rec->id,
+                    'href' => '#'
+                ]
+            );
+            $action_txt = $editlink . ' ' . $deletelink;
+        } else {//if site level template and get_template_messages is called from block settings
+            $enablehtml = html_writer::div('<div class="form-check mb-3" style="width:50%; text-align:left;">
+                        <input type="checkbox" id="enable_chkbx_' . $rec->id . '" class="enable_cent_temp_chkbx" data-id="' . $rec->id . '" ' . ($rec->isenabled?'checked':'') . '>
+                        <label for="enable_chkbx_' . $rec->id . '" class="enable_cent_temp_label">'
+                            . get_string('enabletemplate_sitelevel', 'block_quizchat') .
+                        '</label>
+                    </div>');
+            /* link(
+                $editurl,
+                $editiconhtml,
+                [
+                    'class' => 'edit_btn',
+                    'data-id' => $rec->id,
+                    'href' => '#'
+                ]);  */
+            $action_txt = $enablehtml;
+            $username = "Admin";
+        }
+        
+        // Add to table rows
+        $rows[] = [
+            $action_txt,
+            '<span class="title-truncate" title="'.$rec->title.'">'.$rec->title.'</span>',
+            '<span class="txt-truncate" title="'.$rec->template.'">'.$rec->template.'</span>',
+            $isenabled,
+            $username,
+            $timemodified,
+            $rec->id,
+            $rec->isenabled
+        ];
+    }
+
+    return $rows;
+}
+
+/**
+ * @param int $templateid template id 
+ * Delete template message
+ * @return bool success or fail
+ */
+function delete_template_msg($templateid): bool {
+    global $DB;
+    $deleted_bt = $DB->delete_records('block_quizchat_block_templates', ['templateid' => $templateid]);
+    $deleted = $DB->delete_records('block_quizchat_templates', ['id' => $templateid]);
+    
+    return $deleted;
 }

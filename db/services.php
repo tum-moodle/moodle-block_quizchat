@@ -81,5 +81,63 @@ $functions = array(
         // Whether the service is available for use in AJAX calls from the web.
         'ajax'        => true,
 
+    ],
+    'block_quizchat_create_template_message' => [
+        // The name of the namespaced class that the function is located in.
+        'classname'   => 'block_quizchat\external\create_template_message',
+
+        // A brief, human-readable, description of the web service function.
+        'description' => 'Add a new template message.',
+
+        // Options include read, and write.
+        'type'        => 'write',
+
+        // Whether the service is available for use in AJAX calls from the web.
+        'ajax'        => true,
+
+    ],
+    'block_quizchat_get_template_messages' => [
+        // The name of the namespaced class that the function is located in.
+        'classname'   => 'block_quizchat\external\get_template_messages',
+
+        // A brief, human-readable, description of the web service function.
+        'description' => 'Get template messages.',
+
+        // Options include read, and write.
+        'type'        => 'read',
+
+        // Whether the service is available for use in AJAX calls from the web.
+        'ajax'        => true,
+
+        // An optional list of services where the function will be included.
+    ],
+    'block_quizchat_delete_template_message' => [
+        // The name of the namespaced class that the function is located in.
+        'classname'   => 'block_quizchat\external\delete_template_message',
+
+        // A brief, human-readable, description of the web service function.
+        'description' => 'Delete template message.',
+
+        // Options include read, and write.
+        'type'        => 'write',
+
+        // Whether the service is available for use in AJAX calls from the web.
+        'ajax'        => true,
+
+        // An optional list of services where the function will be included.
+    ],
+    'block_quizchat_exclude_central_template_messages' => [
+        // The name of the namespaced class that the function is located in.
+        'classname'   => 'block_quizchat\external\exclude_central_template_messages',
+
+        // A brief, human-readable, description of the web service function.
+        'description' => 'Exclude or add a central template message to a block.',
+
+        // Options include read, and write.
+        'type'        => 'write',
+
+        // Whether the service is available for use in AJAX calls from the web.
+        'ajax'        => true,
+
     ]
 );

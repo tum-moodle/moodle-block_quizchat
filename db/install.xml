@@ -15,6 +15,7 @@
         <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="instanceid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="tempmenuenabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Whether template menu is enabled" />
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -54,7 +55,7 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="quizchatid" TYPE="foreign" FIELDS="quizchatid" REFTABLE="quizchat" REFFIELDS="id"/>
+        <KEY NAME="quizchatid" TYPE="foreign" FIELDS="quizchatid" REFTABLE="block_quizchat" REFFIELDS="id"/>
         <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
         <KEY NAME="receiverid" TYPE="foreign" FIELDS="receiverid" REFTABLE="user" REFFIELDS="id"/>
         <KEY NAME="groupid" TYPE="foreign" FIELDS="groupid" REFTABLE="block_quizchat_group" REFFIELDS="id"/>
@@ -68,6 +69,36 @@
         <INDEX NAME="groupid" UNIQUE="false" FIELDS="groupid"/>
         <INDEX NAME="timestamp-quizchatid" UNIQUE="false" FIELDS="timestamp, quizchatid"/>
       </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_quizchat_templates" COMMENT="Stores predefined messages">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="title" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="template" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="isenabled" TYPE="int" LENGTH="1" NOTNULL="true" COMMENT="Whether template is enabled" />
+        <FIELD NAME="isquizlevel" TYPE="int" LENGTH="1" NOTNULL="true" COMMENT="0=site-level, 1=quiz-level" />
+        <FIELD NAME="type" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="msg= predefined message in templates menu, ques= predefined topic in questions menu"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="User who created the template" />
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Time created" />
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Time last modified" />
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="block_quizchat_block_templates" COMMENT="Stores which templates are selected/enabled for each quiz block instance">
+        <FIELDS>
+            <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+            <FIELD NAME="quizchatid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            <FIELD NAME="templateid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="FK to block_quizchat_templates.id" />
+            <FIELD NAME="isexcluded" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Whether the site-level template is excluded from this quizchat block" />
+        </FIELDS>
+        <KEYS>
+            <KEY NAME="primary" TYPE="primary" FIELDS="id" />
+            <KEY NAME="quizchatid" TYPE="foreign" FIELDS="quizchatid" REFTABLE="block_quizchat" REFFIELDS="id"/>
+            <KEY NAME="templateid" TYPE="foreign" FIELDS="templateid" REFTABLE="block_quizchat_templates" REFFIELDS="id" />
+        </KEYS>
     </TABLE>
   </TABLES>
 </XMLDB>

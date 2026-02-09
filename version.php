@@ -21,8 +21,7 @@
  * @copyright 2023, TUM ProLehre | Medien und Didaktik <moodle@tum.de>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2025111000;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2020060900;        // Requires this Moodle version
-$plugin->component = 'block_quizchat';      // Full name of the plugin (used for diagnostics)
+defined('MOODLE_INTERNAL') || die(); 
+$plugin->version   = 2026020600;        // The current plugin version (Date: YYYYMMDDXX)
+$plugin->requires  = 2020060900;        // Requires this Moodle version 
+$plugin->component = 'block_quizchat';  // Full name of the plugin (used for diagnostics)

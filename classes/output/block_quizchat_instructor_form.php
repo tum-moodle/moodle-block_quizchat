@@ -44,7 +44,6 @@ class block_quizchat_instructor_form extends \moodleform
         $autocomplete->setValue(0);
         $autocomplete->updateAttributes(array('class'=> 'd-block w-100'));
         $mform->addElement($autocomplete);
-        //$mform->setDefault('block_quizchat_users_select', 0);
         $msg_send_group = [
             $mform -> createElement('hidden', 'block_quizchat_quizid', $q_info -> id),
             $mform -> createElement('hidden', 'block_quizchat_langtxt_everyone', get_string('everyone', 'block_quizchat')),
@@ -76,6 +75,7 @@ class block_quizchat_instructor_form extends \moodleform
         $mform->setType('block_quizchat_grouptxt', PARAM_RAW);
         $mform->setType('block_quizchat_enableflag', PARAM_INT);
         $mform->addGroup($msg_send_group, 'block_quizchat_msg_send_group', '', '', false);
+
     }
 
 }

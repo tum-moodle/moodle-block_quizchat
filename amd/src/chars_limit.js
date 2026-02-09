@@ -21,15 +21,17 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 import $ from 'jquery';
-var spaceIndex = $('#charCount').text().indexOf(' ');
-var spanTxtCharCount = $('#charCount').text().substring(spaceIndex + 1);
+let targetSpan = $('#charCount').length ? $('#charCount') : $('#charCount_msg');
+var spaceIndex = targetSpan.text().indexOf(' ');
+var spanTxtCharCount = targetSpan.text().substring(spaceIndex + 1);
 
-export const resetCharsCount = (maxLen) => {
-    //reset charCount span after message sent
-    $('#charCount').text(maxLen + ' ' + spanTxtCharCount);
+export const resetCharsCount = (maxLen, counterSpanSel = null) => {
+    const target = counterSpanSel ?? '#charCount';
+    $(target).text(maxLen + ' ' + spanTxtCharCount);
 };
 
-export const checkCharsLength = (maxLen , inputId) => {
+export const checkCharsLength = (maxLen , inputId, counterSpanSel = null) => {
+    const target = counterSpanSel ?? '#charCount';
     var currentLen = $(inputId).val().length;
     var remainChars = maxLen - currentLen;
     // Stop adding more characters if limit exceeded
@@ -38,7 +40,7 @@ export const checkCharsLength = (maxLen , inputId) => {
       remainChars = 0;
     }
     // Reset the appearance of the message
-    $('#charCount').text(remainChars + ' ' + spanTxtCharCount);
+    $(target).text(remainChars + ' ' + spanTxtCharCount);
 };
 
 export const handleWhiteSpaceMsg = (inputTextName) => {

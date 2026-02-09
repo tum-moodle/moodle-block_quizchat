@@ -47,6 +47,7 @@ import {
     handleWhiteSpaceMsg as checkWhiteSpaceMsg
 } from 'block_quizchat/chars_limit';
 import { full_screen_flag, int_sessionStorage } from './master';
+import * as Settings from 'block_quizchat/settings';
 
 let quizchatobj;
 var msglen;
@@ -1230,5 +1231,50 @@ export const init_instructor = (arg_quizchat, confingsetting_msglen, reqmsg, rec
         if(full_screen_flag) {
             click_private_group_btns();
         }
+        const targetNode_tempmsgsform = $('#block_quizchat_template_msgs');
+        if (!targetNode_tempmsgsform) {return;}
+        let ul_observer_tempmsgs = new MutationObserver(ul_callback_tempmsgs);
+        ul_observer_tempmsgs.observe(targetNode_tempmsgsform[0], ul_config);
+        const temp_msg_observer = new MutationObserver(() => {
+            const form = document.getElementById('quizchat-form');
+            if (form) {
+                // Stop observing once form appears
+                temp_msg_observer.disconnect();
+                Settings.init();
+            }
+        });
+        temp_msg_observer.observe(document.body, { childList: true, subtree: true });
     });
+    const ul_callback_tempmsgs = (mutations) => {
+        for (var mutation of mutations) {
+            if (mutation.type === 'childList') {
+                   const targetNode_tempmsgsul = $('#block_quizchat_template_msgs .form-autocomplete-suggestions');
+                   if(targetNode_tempmsgsul.length) {
+                    $('#block_quizchat_template_msgs .form-autocomplete-suggestions li').on('click', function() {
+                        const tempmsg = $(this).attr('data-value').match(/data-tempmsg="([^"]+)"/)[1];
+                        $('#block_quizchat_input_instructor_send').trigger('focus');
+                        $('#block_quizchat_input_instructor_send').val(tempmsg);
+                        const targetdiv = $('#block_quizchat_template_msgs div[id^="form_autocomplete_selection-"]');
+                        let observer_targetdiv = new MutationObserver(callback_targetdiv);
+                        let ul_config = {childList: true, subtree: true};
+                        observer_targetdiv.observe(targetdiv[0], ul_config);
+                        $('#block_quizchat_input_instructor_send').trigger('input');
+                    });
+                    break;
+                   }
+            }
+        }
+    };
+};
+const callback_targetdiv = (mutations) => {
+    for (var mutation of mutations) {
+        if (mutation.type === 'childList') {
+            const closebtn = $('#block_quizchat_template_msgs span[aria-hidden="true"]:contains("× ")');
+            if(closebtn.length) {
+                $('#block_quizchat_template_msgs span[aria-hidden="true"]:contains("× ")').trigger('click');
+                $('#block_quizchat_input_instructor_send').trigger('focus');
+                break;
+            }
+        }
+    }
 };

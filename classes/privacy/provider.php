@@ -63,6 +63,16 @@ class provider implements
             'gname' => 'privacy:metadata:block_quizchat_messages:gname'
         ], 'privacy:metadata:block_quizchat_messages');
 
+        $collection->add_database_table('block_quizchat_templates', [
+            'id' => 'privacy:metadata:block_quizchat_templates:id',
+            'title'     => 'privacy:metadata:block_quizchat_templates:title',
+            'message' => 'privacy:metadata:block_quizchat_templates:message',
+            'type'    => 'privacy:metadata:block_quizchat_templates:type',
+            'isenabled'    => 'privacy:metadata:block_quizchat_templates:isenabled',
+            'timecreated'  => 'privacy:metadata:block_quizchat_templates:timecreated',
+            'timemodified' => 'privacy:metadata:block_quizchat_templates:timemodified'
+        ], 'privacy:metadata:block_quizchat_templates');
+
         return $collection;
     }
 
@@ -170,11 +180,75 @@ class provider implements
             array_push($msgs, (object)$msg);
         }
 
+        $sql_templates = "SELECT DISTINCT 
+                            t.id,
+                            t.title,
+                            t.template,
+                            q.name AS quizname,
+                            c.fullname AS coursename,
+                            t.isenabled,
+                            CASE 
+                                WHEN t.isquizlevel = 0 THEN 'central'
+                                WHEN t.isquizlevel = 1 THEN 'quiz'
+                            END AS type,
+                            t.timecreated,
+                            t.timemodified
+                        FROM {block_quizchat_templates} t
+                        LEFT JOIN {block_quizchat_block_templates} bt 
+                               ON bt.templateid = t.id
+                        LEFT JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid   
+                        LEFT JOIN {quiz} q 
+                               ON qc.quiz = q.id
+                        LEFT JOIN {course} c 
+                               ON c.id = qc.course
+                        WHERE t.userid = :userid
+                        ORDER BY t.timecreated ASC;";
+        $rs_temps = $DB->get_records_sql($sql_templates, $params);
+        $temps = [];
+        $temp = [];
+        foreach ($rs_temps as $record_temp) {
+            if ($record_temp->type == 'quiz' && !is_null($record_temp->quizname) ) {
+                $temp = [
+                'Template id' => format_string($record_temp->id),
+                'Template title' => format_string($record_temp->title),
+                'Template message' => format_string($record_temp->template),
+                'Type' => format_string($record_temp->type),
+                'Created in quiz' => format_string($record_temp->quizname),
+                'Created in course' => format_string($record_temp->coursename),
+                'Is enabled' => ($record_temp->isenabled?'enabled':'disabled'),
+                'Time created' => transform::datetime($record_temp->timecreated),
+                'Time modified' => transform::datetime($record_temp->timemodified)
+                ];
+                array_push($temps, (object)$temp);
+            }
+            if ($record_temp->type == 'central') {
+                $temp = [
+                'Template id' => format_string($record_temp->id),
+                'Template title' => format_string($record_temp->title),
+                'Template message' => format_string($record_temp->template),
+                'Type' => format_string($record_temp->type),
+                'Is enabled' => ($record_temp->isenabled?'enabled':'disabled'),
+                'Time created' => transform::datetime($record_temp->timecreated),
+                'Time modified' => transform::datetime($record_temp->timemodified)
+                ];
+                array_push($temps, (object)$temp);
+            }
+        }
+
         if (!empty($msgs)) {
             $subcontext[] = get_string('msgs', 'block_quizchat');
             \core_privacy\local\request\writer::with_context($context)
                 ->export_data($subcontext, (object) [
                     'messages' => $msgs,
+                ]);
+        }
+        if (!empty($temps)) {
+            $subcontext_temp[] = get_string('currenttemplatemessages', 'block_quizchat');
+            \core_privacy\local\request\writer::with_context($context)
+                ->export_data($subcontext_temp, (object) [
+                    'templates' => $temps,
                 ]);
         }
     }
@@ -195,6 +269,23 @@ class provider implements
             'contextid' => $context->id,
         ];
         $DB->delete_records_select('block_quizchat_messages', $msgselect, $params);
+        $sql_templates = "tempmsgid in (SELECT DISTINCT 
+                            t.id
+                        FROM {block_quizchat_templates} t
+                        JOIN {block_quizchat_block_templates} bt 
+                               ON bt.templateid = t.id
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid)";
+        $sql_blocktemplates = "blktempmsgid in (SELECT DISTINCT 
+                            bt.id 
+                        FROM {block_quizchat_block_templates} bt 
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid)";
+        $DB->delete_records_select('block_quizchat_block_templates', $sql_blocktemplates, $params);
+        $DB->delete_records_select('block_quizchat_templates', $sql_templates, $params);
+        
     }
 
     /**
@@ -210,6 +301,25 @@ class provider implements
         $params = array_merge(['contextid' => $context->id], $userinparams);
         $sql = "(quizchatid in (select id from {block_quizchat} WHERE contextid = :contextid)) AND (userid {$userinsql})";
         $DB->delete_records_select('block_quizchat_messages', $sql, $params);
+        $sql_templates = "tempmsgid in (SELECT DISTINCT 
+                            t.id
+                        FROM {block_quizchat_templates} t
+                        JOIN {block_quizchat_block_templates} bt 
+                               ON bt.templateid = t.id
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid 
+                        WHERE t.userid {$userinsql})";
+        $sql_blocktemplates = "blktempmsgid in (SELECT DISTINCT 
+                            bt.id 
+                        FROM {block_quizchat_block_templates} bt 
+                        JOIN {block_quizchat_templates} t ON bt.templateid = t.id
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid 
+                         WHERE t.userid {$userinsql})";
+        $DB->delete_records_select('block_quizchat_block_templates', $sql_blocktemplates, $params);
+        $DB->delete_records_select('block_quizchat_templates', $sql_templates, $params);
     }
 
     /**
@@ -230,6 +340,25 @@ class provider implements
                 'userid' => $userid
             ];
             $DB->delete_records_select('block_quizchat_messages', $msgselect, $params);
+            $sql_templates = "tempmsgid in (SELECT DISTINCT 
+                                t.id
+                            FROM {block_quizchat_templates} t
+                            JOIN {block_quizchat_block_templates} bt 
+                                   ON bt.templateid = t.id
+                            JOIN {block_quizchat} qc 
+                                   ON qc.id = bt.quizchatid 
+                                  AND qc.contextid = :contextid 
+                            WHERE t.userid = :userid)";
+            $sql_blocktemplates = "blktempmsgid in (SELECT DISTINCT 
+                                bt.id 
+                            FROM {block_quizchat_block_templates} bt 
+                            JOIN {block_quizchat_templates} t ON bt.templateid = t.id
+                            JOIN {block_quizchat} qc 
+                                   ON qc.id = bt.quizchatid 
+                                  AND qc.contextid = :contextid 
+                             WHERE t.userid = :userid)";
+            $DB->delete_records_select('block_quizchat_block_templates', $sql_blocktemplates, $params);
+            $DB->delete_records_select('block_quizchat_templates', $sql_templates, $params);
         }
     }
 

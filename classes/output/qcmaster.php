@@ -51,6 +51,15 @@ class qcmaster implements renderable, templatable {
 
     protected $_form;
 
+    protected $enabletempmenu;
+    protected $usecentraltempmsgs;
+
+    public function __construct($enabletempmenu, $usecentraltempmsgs) {
+        $this->enabletempmenu = $enabletempmenu;
+        $this->usecentraltempmsgs = $usecentraltempmsgs;
+    }
+
+
     function get_title() {
         $this->title = get_string('defaulttitle', 'block_quizchat');
         return $this->title;
@@ -178,7 +187,8 @@ class qcmaster implements renderable, templatable {
             $data->permissions_url = $quizchat->permissions_url;
 
             $questions_form = new questions_form(null,["quizchatid" => $quizchat->id]);
-            $instructor_form = new block_quizchat_instructor_form(null, ["id" => $quizchat->id]);
+            $tempmsgs_form = new tempmsgs_form(null, ["id" => $quizchat->id, "enabletempmenu" => $this->enabletempmenu, "usecentraltempmsgs" => $this->usecentraltempmsgs]);
+            $instructor_form = new block_quizchat_instructor_form(null, ["id" => $quizchat->id, "enabletempmenu" => $this->enabletempmenu]);
 
             //get groups menu
             $url = $PAGE->url;
@@ -219,7 +229,9 @@ class qcmaster implements renderable, templatable {
             $data->groups_menu = $groups_menu;
             $data->group_access = $group_access;
             $data->questions_form = $group_access? $questions_form->render() : '';
+            $data->tempmsgs_form = $group_access? $tempmsgs_form->render() : '';
             $data->instructor_form = $group_access? $instructor_form->render() : '';
+            
             if($group_access) {
                 $PAGE->requires->js_call_amd(
                     'block_quizchat/instructor',
@@ -229,7 +241,7 @@ class qcmaster implements renderable, templatable {
                 self::$amd_init_instructor_called = true;
             }
         }
-        $PAGE->requires->css('/blocks/quizchat/quizchat.css');
+        $PAGE->requires->css('/blocks/quizchat/');
         return $data;
     }
 }

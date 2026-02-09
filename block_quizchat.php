@@ -87,8 +87,11 @@ class block_quizchat extends block_base
             }
             quizchat_add_instance($data);
         }
-
-        $renderable = new \block_quizchat\output\qcmaster();
+        $blockconfig = get_config('block_quizchat');//site level
+        $tempmenu_sitelevel = $blockconfig->enabletemplatemenu ?? 0;
+        $enabletempmenu_blk = $this->config->templatemsgsmenu ?? ($tempmenu_sitelevel ?? 0);
+        $usecentraltempmsgs_blk = $this->config->usecentraltempmsgs ?? 1;
+        $renderable = new \block_quizchat\output\qcmaster((int)$enabletempmenu_blk, (int)$usecentraltempmsgs_blk);
         $renderer = $this->page->get_renderer('block_quizchat');
         $this->content = new \stdClass();
         $this->content->text = $renderer->render($renderable);
@@ -117,6 +120,39 @@ class block_quizchat extends block_base
         global $DB;
         $quizchat = $DB->get_record('block_quizchat', ['contextid' => $this->context->id ?? 'None'], '*');
         $quizchat_messages = $DB->get_records('block_quizchat_messages', array('quizchatid'=> $quizchat->id ?? 'None'));
+        $sql_templates = "SELECT DISTINCT 
+                            t.id
+                        FROM {block_quizchat_templates} t
+                        JOIN {block_quizchat_block_templates} bt 
+                               ON bt.templateid = t.id AND t.isquizlevel = 1 
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid";
+        $params = [
+            'contextid' => $this->context->id
+        ];
+        $quizchat_temps = $DB->get_records_sql($sql_templates, $params);
+        $sql_blocktemplates = "SELECT DISTINCT 
+                            bt.id 
+                        FROM {block_quizchat_block_templates} bt 
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid";
+        $quizchat_blktemps = $DB->get_records_sql($sql_blocktemplates, $params);
+        if(!empty($quizchat_blktemps)){
+            $DB->delete_records('block_quizchat_block_templates', array('quizchatid'=> $quizchat->id));
+        }
+        if(!empty($quizchat_temps)){
+            $sql_templates = "tempmsgid in (SELECT DISTINCT 
+                            t.id
+                        FROM {block_quizchat_templates} t
+                        JOIN {block_quizchat_block_templates} bt 
+                               ON bt.templateid = t.id 
+                        JOIN {block_quizchat} qc 
+                               ON qc.id = bt.quizchatid 
+                              AND qc.contextid = :contextid)";
+            $DB->delete_records_select('block_quizchat_templates', $sql_templates, $params);
+        }
         if(!empty($quizchat_messages)){
             $DB->delete_records('block_quizchat_messages', array('quizchatid'=> $quizchat->id));
         }

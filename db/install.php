@@ -25,9 +25,15 @@ defined('MOODLE_INTERNAL') || die;
 
 
 function xmldb_block_quizchat_install() {
-    global $DB;
+    global $DB, $USER;
     $group1 = ['name' => 'all', 'msgid' => null, 'groupid' => null, 'groupingid' => null];
     $group2 = ['name' => 'teachers', 'msgid' => null, 'groupid' => null, 'groupingid' => null];
     $DB->insert_record('block_quizchat_group', $group1);
     $DB->insert_record('block_quizchat_group', $group2);
+    $tempmsg1 = ['title' => 'Restroom Rules','template' => 'If you need to use the restroom, please request permission before leaving your seat.', 'type' => 'msg', 'isenabled' => 1, 'isquizlevel' => 0, 'userid' => $USER->id, 'timecreated' => time(),  'timemodified' => time()];
+    $tempmsg2 = ['title' => 'Restroom Break Approved','template' => 'Your restroom break request is approved. Please leave all exam materials at your desk.', 'type' => 'msg', 'isenabled' => 1, 'isquizlevel' => 0, 'userid' => $USER->id, 'timecreated' => time(),  'timemodified' => time()];
+    $tempmsg3 = ['title' => 'Restroom Break Pending','template' => 'You will need to wait a moment before taking a restroom break. Please remain seated.', 'type' => 'msg', 'isenabled' => 1, 'isquizlevel' => 0, 'userid' => $USER->id, 'timecreated' => time(),  'timemodified' => time()];
+    $DB->insert_record('block_quizchat_templates', $tempmsg1);
+    $DB->insert_record('block_quizchat_templates', $tempmsg2);
+    $DB->insert_record('block_quizchat_templates', $tempmsg3);
 }

@@ -33,7 +33,12 @@ Feature: prohibit and allow sendmsg capability in a quizchat block
       | TF1                     | 1    |
       | TF2                     | 2    |
     And I log in as "admin"
-    And I navigate to "Users > Permissions > Define roles" in site administration
+    #And I navigate to "Users > Permissions > Define roles" in site administration
+    And I follow "Site administration"
+    And I set the field "Search" to "Define roles"
+    And I press "Search"
+    And I wait until the page is ready
+    And I follow "Define roles"
     And I follow "Student"
     And I press "Reset"
     And I click on "Allow role assignments" "checkbox"

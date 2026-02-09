@@ -20,6 +20,8 @@ Students are allowed to chat only with the instructors. It also comes with built
 
 - Configurable time settings allow editting teachers and admins to define when Quizchat becomes available. Make sure the quiz’s “Open the quiz,” “Close the quiz,” or “Time limit” settings are configured in the quiz settings page. When these are defined, Quizchat will become available automatically based on your configured time (e.g., 20 minutes before the quiz starts). If the quiz timing settings are not defined, Quizchat will remain unavailable until a student starts an attempt.
 
+- This plugin introduces an in-block quick-access menu that allows instructors to insert pre-defined template messages directly into their responses. The menu provides a collection of commonly used replies for frequent student queries, eliminating the need to repeatedly type the same text and significantly improving response time. By selecting a template from the menu, instructors can instantly populate the response area with a consistent, well-structured message that can be sent as-is or easily customized as needed.
+
 # Compatibility
 This block is compatible with Moodle versions 4.3 to 5.0 and is also compatible with PHP versions 8.0 to 8.3 (please check the respective compatibility for your Moodle version). 
 
@@ -78,6 +80,9 @@ To change role permissions for a Quizchat block:
 - Quizchat Poll Interval (Interval for polling the webservice for new messages in seconds).
 - Unnotify Timeout (Timespan in seconds between receiving a message and marking all new messages as read when the block drawer is open).
 - Message length (The maximum number of characters to be sent in a single message).
+- Template Messages settings (The template messages allow instructors to quickly access predefined responses):
+   + Central template messages (add, edit and delete)
+   + Enable template menu (If checked, the template menu will be available to be activated in Quizchat blocks - by default unchecked)
 
 # MathJax Filter Settings
 
@@ -113,6 +118,13 @@ MathJax.Hub.Config({
 # Block Settings
 
 - Quizchat Title
+- Chat open before quiz in minutes (If enabled, how many minutes before the quiz starts will the chat open?)
+- Enable template messages menu in block
+- Use central template messages
+### Template messages
+- The template messages allow instructors to quickly access predefined responses.
+   + Quiz template messages (add, edit and delete)
+   + Central template messages (include and exclude)
 ### Where this block appears
 - Original block location
    The original location where the block was created. For example, a quizchat block created on a quiz page could be displayed in the block drawer within that quiz.

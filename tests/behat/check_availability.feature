@@ -95,7 +95,12 @@ Feature: Quizchat Availability
   @javascript
   Scenario: check availability in student view if chat is open before quiz starting
     When I log in as "admin"
-    And I navigate to "Location > Location settings" in site administration
+    #And I navigate to "Location > Location settings" in site administration
+    And I follow "Site administration"
+    And I set the field "Search" to "Location settings"
+    And I press "Search"
+    And I wait until the page is ready
+    And I follow "Location settings"
     And I set the following fields to these values:
       | Default timezone | Europe/Berlin |
       | Default country  | Germany       |
